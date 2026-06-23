@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "Seller": {
+      "title": "Seller",
+      "description": "Information about a seller on the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "hours": { "type": "string" },
+        "phone": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviews": { "type": "number" },
+        "deliveryAvailable": { "type": "boolean" },
+        "paymentMethods": { "type": "array", "items": { "type": "string" } },
+        "bannerUrl": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "verificationLevel": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "name", "location", "phone"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Information about a product offered by a seller.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "unit": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "stock": { "type": "number" },
+        "categoryId": { "type": "string" },
+        "subCategoryId": { "type": "string" },
+        "distance": { "type": "string" },
+        "hasVideo": { "type": "boolean" }
+      },
+      "required": ["id", "sellerId", "name", "price"]
+    },
+    "Banner": {
+      "title": "Banner",
+      "description": "Local sponsored banner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "heading": { "type": "string" },
+        "coupon": { "type": "string" },
+        "theme": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "sellerId": { "type": "string" }
+      },
+      "required": ["id", "title", "heading", "imageUrl"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "Information about a registered delivery partner driver.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "vehicleType": { "type": "string" },
+        "momoNumber": { "type": "string" },
+        "licenseId": { "type": "string" },
+        "suburb": { "type": "string" },
+        "registeredAt": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "vehicleType", "momoNumber", "licenseId", "suburb"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Information about an authorized administrator.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "passcode": { "type": "string" },
+        "registeredAt": { "type": "string" }
+      },
+      "required": ["id", "name", "employeeId", "passcode"]
+    }
+  },
+  "firestore": {
+    "sellers": {
+      "schema": { "$ref": "Seller" },
+      "description": "Collection of sellers."
+    },
+    "products": {
+      "schema": { "$ref": "Product" },
+      "description": "Collection of products."
+    },
+    "banners": {
+      "schema": { "$ref": "Banner" },
+      "description": "Collection of banners."
+    },
+    "drivers": {
+      "schema": { "$ref": "Driver" },
+      "description": "Collection of delivery partner drivers."
+    },
+    "admins": {
+      "schema": { "$ref": "Admin" },
+      "description": "Collection of authorized administrators."
+    }
+  }
+}

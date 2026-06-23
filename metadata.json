@@ -1,0 +1,6 @@
+{
+  "name": "eMakethe",
+  "description": "Digital Marketplace for Informal Traders in Eswatini and Africa",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
