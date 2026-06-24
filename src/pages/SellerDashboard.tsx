@@ -1,4 +1,4 @@
-import { Settings, Plus, Package, DollarSign, TrendingUp, Bell, MapPin, Truck, CheckCircle2, UserCheck, X, Navigation, Sparkles, MessageSquare, Image as ImageIcon, Megaphone, ShieldAlert, Fingerprint, Lock, Coins, Award, Info, FileText, Store, Phone, ShieldCheck, BarChart3 } from 'lucide-react';
+import { Settings, Plus, Package, DollarSign, TrendingUp, Bell, MapPin, Truck, CheckCircle2, UserCheck, X, Navigation, Sparkles, MessageSquare, Image as ImageIcon, Megaphone, ShieldAlert, Fingerprint, Lock, Coins, Award, Info, FileText, Store, Phone, ShieldCheck, BarChart3, Palette } from 'lucide-react';
 import { SELLERS, PRODUCTS, CATEGORIES, addProductToStorage } from '../data/mockData';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { VerificationBadge } from '../components/VerificationBadge';
 import { db } from '../lib/firebase';
 import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
 import { useFirebase } from '../components/FirebaseProvider';
+import { NotificationsPopover, NotificationItem } from '../components/NotificationsPopover';
 
 export default function SellerDashboard() {
   const navigate = useNavigate();
@@ -64,7 +65,62 @@ export default function SellerDashboard() {
   
   // Dynamic monetization states matching Admin and User requests
   const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'products' | 'ai-coach' | 'ads' | 'security' | 'premium_hub' | 'whatsapp_setup'>('analytics');
-  const [isPremiumMerchant, setIsPremiumMerchant] = useState(false); // Monthly subscription
+  const [shopTier, setShopTier] = useState<'basic' | 'premium' | 'business' | 'service_pro'>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_shop_tier');
+      return (saved as 'basic' | 'premium' | 'business' | 'service_pro') || 'basic';
+    } catch { return 'basic'; }
+  });
+  const isPremiumMerchant = shopTier !== 'basic';
+
+  const [designerDesc, setDesignerDesc] = useState(seller?.description || '');
+  const [designerHours, setDesignerHours] = useState(seller?.hours || '');
+  const [designerPhone, setDesignerPhone] = useState(seller?.phone || '');
+  const [designerLocation, setDesignerLocation] = useState(seller?.location || '');
+  const [designerBanner, setDesignerBanner] = useState(seller?.bannerUrl || '');
+  const [designerTheme, setDesignerTheme] = useState(seller?.themeColor || 'emerald');
+  const [designerAnnouncement, setDesignerAnnouncement] = useState(seller?.announcement || '');
+  const [designerFacebook, setDesignerFacebook] = useState(seller?.facebook || '');
+  const [designerInstagram, setDesignerInstagram] = useState(seller?.instagram || '');
+
+  useEffect(() => {
+    if (seller) {
+      setDesignerDesc(seller.description || '');
+      setDesignerHours(seller.hours || '');
+      setDesignerPhone(seller.phone || '');
+      setDesignerLocation(seller.location || '');
+      setDesignerBanner(seller.bannerUrl || '');
+      setDesignerTheme(seller.themeColor || 'emerald');
+      setDesignerAnnouncement(seller.announcement || '');
+      setDesignerFacebook(seller.facebook || '');
+      setDesignerInstagram(seller.instagram || '');
+      
+      const tierMap: Record<string, 'basic' | 'premium' | 'business'> = {
+        'basic': 'basic',
+        'verified': 'premium',
+        'premium': 'business'
+      };
+      const dbTier = tierMap[seller.verificationLevel || 'basic'] || 'basic';
+      setShopTier(dbTier);
+      localStorage.setItem('emakethe_shop_tier', dbTier);
+    }
+  }, [seller?.id, seller?.verificationLevel]);
+
+  const updateShopTier = async (newTier: 'basic' | 'premium' | 'business' | 'service_pro') => {
+    setShopTier(newTier);
+    try {
+      localStorage.setItem('emakethe_shop_tier', newTier);
+      const vLevel = newTier === 'business' ? 'premium' : newTier === 'premium' ? 'verified' : newTier === 'service_pro' ? 'premium' : 'basic';
+      if (seller && seller.id) {
+        await setDoc(doc(db, 'sellers', seller.id), {
+          ...seller,
+          verificationLevel: vLevel
+        });
+      }
+    } catch (err) {
+      console.error("Failed to update shop tier", err);
+    }
+  };
   const [isDigitalToolsActive, setIsDigitalToolsActive] = useState(false); // Digital services / business tools for traders
   const [merchantBalance, setMerchantBalance] = useState(380.00); // Merchant in-app digital wallet
   const [activePromotions, setActivePromotions] = useState<{ [key: string]: boolean }>({
@@ -101,6 +157,14 @@ export default function SellerDashboard() {
   // Campaign builder inputs
   const [selectedFeaturedProduct, setSelectedFeaturedProduct] = useState<string>('');
   const [featuredDuration, setFeaturedDuration] = useState<number>(1);
+  const [featuredPlan, setFeaturedPlan] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [featuredMultiplier, setFeaturedMultiplier] = useState<number>(1);
+  const [featuredCampaignsMeta, setFeaturedCampaignsMeta] = useState<Record<string, { planType: string, multiplier: number, cost: number, dateAdded: string }>>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_featured_campaigns_meta');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
   const [selectedSponsoredProduct, setSelectedSponsoredProduct] = useState<string>('');
   const [sponsoredPlacement, setSponsoredPlacement] = useState<string>('Homepage Feed');
   const [sponsoredDuration, setSponsoredDuration] = useState<number>(1); // weeks
@@ -123,6 +187,10 @@ export default function SellerDashboard() {
   useEffect(() => {
     localStorage.setItem('emakethe_featured_products', JSON.stringify(featuredProducts));
   }, [featuredProducts]);
+
+  useEffect(() => {
+    localStorage.setItem('emakethe_featured_campaigns_meta', JSON.stringify(featuredCampaignsMeta));
+  }, [featuredCampaignsMeta]);
 
   useEffect(() => {
     localStorage.setItem('emakethe_sponsored_listings', JSON.stringify(sponsoredListings));
@@ -154,7 +222,7 @@ export default function SellerDashboard() {
 
   // Seller Logistics template configuration states
   const [selfDeliveryEnabled, setSelfDeliveryEnabled] = useState(true);
-  const [selfDeliveryCost, setSelfDeliveryCost] = useState('15.00');
+  const [selfDeliveryCost, setSelfDeliveryCost] = useState('50.00');
   const [selfDeliveryVehicle, setSelfDeliveryVehicle] = useState('Motorcycle Rider');
   
   const [courierEnabled, setCourierEnabled] = useState(true);
@@ -163,7 +231,7 @@ export default function SellerDashboard() {
   const [courierTrackingCode, setCourierTrackingCode] = useState('ESCX-7749-SZ');
   
   const [marketplaceEnabled, setMarketplaceEnabled] = useState(true);
-  const [marketplaceCostRate, setMarketplaceCostRate] = useState('15.00');
+  const [marketplaceCostRate, setMarketplaceCostRate] = useState('50.00');
 
   const [sellerSelectedMethod, setSellerSelectedMethod] = useState<'self' | 'courier' | 'marketplace' | null>('marketplace');
 
@@ -256,6 +324,18 @@ export default function SellerDashboard() {
       alert("Please enter a product title!");
       return;
     }
+
+    // Limit checks based on Premium / Business shop tier
+    const sellerProducts = PRODUCTS.filter(p => p.sellerId === seller.id);
+    if (shopTier === 'basic' && sellerProducts.length >= 3) {
+      alert("Listing Limit Reached! Basic free shops are limited to 3 product listings. Please upgrade to Premium (max 10) or Business (unlimited) in the Premium Hub to list more items.");
+      return;
+    }
+    if (shopTier === 'premium' && sellerProducts.length >= 10) {
+      alert("Listing Limit Reached! Premium shops are limited to 10 product listings. Please upgrade to Business (unlimited) in the Premium Hub to list more items.");
+      return;
+    }
+
     const productId = `prod-${Date.now()}`;
     const newProductObj = {
       id: productId,
@@ -362,6 +442,16 @@ export default function SellerDashboard() {
     }
   };
 
+  const [sellerNotifications, setSellerNotifications] = useState<NotificationItem[]>([
+    { id: '1', type: 'success', title: 'Payment Received', message: 'You received E 250.00 from Sipho via MTN MoMo.', time: '10m ago', read: false },
+    { id: '2', type: 'info', title: 'Order Paid', message: 'Order #8920 (Handcrafted Baskets) has been fully paid.', time: '1h ago', read: false },
+    { id: '3', type: 'success', title: 'Cash Payment Confirmed', message: 'Cash on delivery for Order #8911 confirmed by driver.', time: '3h ago', read: true },
+  ]);
+
+  const markSellerNotificationsRead = () => {
+    setSellerNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
   if (!seller) {
     return (
       <div className="bg-gray-50 min-h-screen py-20 px-4 w-full flex flex-col items-center justify-center text-center">
@@ -381,10 +471,12 @@ export default function SellerDashboard() {
           <VerificationBadge level={seller.verificationLevel} showText={true} showDetails={true} />
         </div>
         <div className="flex gap-3">
-          <button className="text-gray-600 relative">
-            <Bell size={20}/>
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          <NotificationsPopover 
+            notifications={sellerNotifications} 
+            onMarkAllAsRead={markSellerNotificationsRead} 
+            triggerColor="text-gray-600"
+            dotColor="bg-red-500"
+          />
           <button className="text-gray-600"><Settings size={20}/></button>
         </div>
       </div>
@@ -476,76 +568,357 @@ export default function SellerDashboard() {
                    <span className="font-mono">ID: TZ-84192</span>
                 </div>
              </div>
-
-             {/* 1. Commission Plan Widget */}
+                          {/* 1. Commission Plan Widget */}
              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-3">
                 <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0"><DollarSign className="w-5 h-5" /></div>
                 <div className="flex-1">
                    <div className="flex justify-between items-center">
                       <h4 className="font-bold text-sm text-gray-800">Marketplace Commission Plan</h4>
-                      <span className="text-[10px] text-gray-400 font-bold">Standard rate: 5.0%</span>
+                      <span className="text-[10px] text-gray-400 font-bold">Based on Active Tier</span>
                    </div>
                    <p className="text-[11px] text-gray-500 mt-1">Platform commission automatically deducted per transaction.</p>
                    
                    <div className="mt-3 flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
                       <div className="flex items-center gap-1.5">
-                         <span className={`w-2 h-2 rounded-full ${isPremiumMerchant ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`}></span>
+                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                          <span className="text-[11px] text-gray-700 font-bold">Active Commission Cut:</span>
                       </div>
-                      <span className={`text-xs font-mono font-bold ${isPremiumMerchant ? "text-amber-600 bg-amber-50" : "text-emerald-700 bg-emerald-50"} px-2.5 py-0.5 rounded-full`}>
-                         {isPremiumMerchant ? "2.5% (Premium Class)" : "5.0% (Standard)"}
+                      <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
+                        shopTier === 'business' ? "text-amber-700 bg-amber-50 border border-amber-200" : 
+                        shopTier === 'premium' ? "text-blue-700 bg-blue-50 border border-blue-200" : 
+                        "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                      }`}>
+                         {shopTier === 'business' ? "1.0% (Business Class)" : 
+                          shopTier === 'premium' ? "2.5% (Premium Class)" : 
+                          "5.0% (Standard)"}
                       </span>
                    </div>
                 </div>
              </div>
 
-             {/* 2. PREMIUM SHOPS - MONTHLY SUBSCRIPTION */}
-             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
+             {/* 2. PREMIUM SHOPS - SUBSCRIPTION TIERS */}
+             <div id="membership-tiers-card" className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
                 <div className="flex items-start gap-3">
                    <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl shrink-0"><Award size={20} /></div>
                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                         <div>
-                            <h4 className="font-bold text-sm text-gray-800">2. Premium Shop Membership</h4>
-                            <p className="text-[10px] text-amber-600 font-bold mt-0.5 flex items-center gap-1">
-                               <Award size={12} /> Monthly subscription • E 149/mo
-                            </p>
-                         </div>
-                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${isPremiumMerchant ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-gray-100 text-gray-500"}`}>
-                            {isPremiumMerchant ? "Active Member" : "Inactive"}
-                         </span>
-                      </div>
-                      <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
-                         Premium members unlock a Golden Verification Badge, lower transaction fees (cut by half to 2.5%), priority search suggestions, and free business templates.
+                      <h4 className="font-bold text-sm text-gray-800">2. Shop Membership Tiers</h4>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                         Choose the plan that fits your business scale. Unlock advanced search priority, verified status, and custom store designs!
                       </p>
                    </div>
                 </div>
 
-                <div className="mt-2 flex gap-2">
-                   {isPremiumMerchant ? (
+                {/* Plan Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                   {/* Basic Plan */}
+                   <div className={`p-3 rounded-2xl border flex flex-col justify-between text-left transition-all relative ${shopTier === 'basic' ? 'bg-emerald-50/40 border-emerald-500 ring-1 ring-emerald-500/20' : 'bg-slate-50/50 border-gray-100'}`}>
+                      {shopTier === 'basic' && (
+                         <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[7.5px] font-black uppercase px-1.5 py-0.2 rounded-full font-mono">
+                            Active
+                         </div>
+                      )}
+                      <div>
+                         <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wide block">Basic</span>
+                         <span className="font-mono text-sm font-black text-slate-800 block mt-1">Free</span>
+                         <ul className="text-[8px] text-gray-500 font-medium space-y-1 mt-2.5">
+                            <li className="flex items-center gap-1">⏱️ Phone Verified</li>
+                            <li className="flex items-center gap-1">📦 Max 3 Listings</li>
+                            <li className="flex items-center gap-1">📊 Standard Stats</li>
+                         </ul>
+                      </div>
+                      {shopTier !== 'basic' && (
+                         <button 
+                           type="button"
+                           onClick={() => {
+                             updateShopTier('basic');
+                             alert("Successfully downgraded to Basic tier. Your features have been adjusted.");
+                           }}
+                           className="mt-3 w-full bg-white hover:bg-gray-100 text-slate-700 font-bold text-[9px] py-1.5 rounded-lg border border-gray-200 transition-all text-center cursor-pointer"
+                         >
+                            Switch Free
+                         </button>
+                      )}
+                   </div>
+
+                   {/* Premium Plan */}
+                   <div className={`p-3 rounded-2xl border flex flex-col justify-between text-left transition-all relative ${shopTier === 'premium' ? 'bg-blue-50/40 border-blue-500 ring-1 ring-blue-500/20' : 'bg-slate-50/50 border-gray-100'}`}>
+                      {shopTier === 'premium' && (
+                         <div className="absolute top-2 right-2 bg-blue-500 text-white text-[7.5px] font-black uppercase px-1.5 py-0.2 rounded-full font-mono">
+                            Active
+                         </div>
+                      )}
+                      <div>
+                         <span className="text-[9px] font-extrabold text-blue-600 uppercase tracking-wide block">Premium</span>
+                         <span className="font-mono text-sm font-black text-slate-800 block mt-1">E 99<span className="text-[8px] text-gray-400 font-normal">/mo</span></span>
+                         <ul className="text-[8px] text-gray-500 font-medium space-y-1 mt-2.5 font-sans">
+                            <li className="flex items-center gap-1 text-blue-800 font-semibold">💎 Verified Badge</li>
+                            <li className="flex items-center gap-1">🎨 Better Storefront Design</li>
+                            <li className="flex items-center gap-1">📦 More Product Listings</li>
+                            <li className="flex items-center gap-1">📈 Analytics</li>
+                            <li className="flex items-center gap-1">🚀 Priority Search Placement</li>
+                            <li className="flex items-center gap-1">📄 Custom Business Page</li>
+                         </ul>
+                      </div>
+                      {shopTier !== 'premium' && (
+                         <button 
+                           type="button"
+                           onClick={async () => {
+                             if (merchantBalance >= 99) {
+                               setMerchantBalance(prev => prev - 99);
+                               await updateShopTier('premium');
+                               alert("Congratulations! You are now a Premium Seller with Blue Verified Badge & custom storefront features.");
+                             } else {
+                               alert("Insufficient wallet balance! Please Top Up E 100 first.");
+                             }
+                           }}
+                           className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-[9px] py-1.5 rounded-lg transition-all text-center cursor-pointer"
+                         >
+                            Get Premium
+                         </button>
+                      )}
+                   </div>
+
+                   {/* Business Plan */}
+                   <div className={`p-3 rounded-2xl border flex flex-col justify-between text-left transition-all relative ${shopTier === 'business' ? 'bg-amber-50/40 border-amber-500 ring-1 ring-amber-500/20' : 'bg-slate-50/50 border-gray-100'}`}>
+                      {shopTier === 'business' && (
+                         <div className="absolute top-2 right-2 bg-amber-500 text-white text-[7.5px] font-black uppercase px-1.5 py-0.2 rounded-full font-mono">
+                            Active
+                         </div>
+                      )}
+                      <div>
+                         <span className="text-[9px] font-extrabold text-amber-600 uppercase tracking-wide block">Business</span>
+                         <span className="font-mono text-sm font-black text-slate-800 block mt-1">E 299<span className="text-[8px] text-gray-400 font-normal">/mo</span></span>
+                         <ul className="text-[8px] text-gray-500 font-medium space-y-1 mt-2.5 font-sans">
+                            <li className="flex items-center gap-1 text-amber-800 font-semibold">👑 Gold Badge</li>
+                            <li className="flex items-center gap-1">🎨 Brand Themes</li>
+                            <li className="flex items-center gap-1">📦 Unlimited Items</li>
+                            <li className="flex items-center gap-1">🔥 Top Priority</li>
+                         </ul>
+                      </div>
+                      {shopTier !== 'business' && (
+                         <button 
+                           type="button"
+                           onClick={async () => {
+                             if (merchantBalance >= 299) {
+                               setMerchantBalance(prev => prev - 299);
+                               await updateShopTier('business');
+                               alert("Incredible! You have unlocked Business Class Shop status. Enjoy maximum priority placement and fully custom storefront layouts!");
+                             } else {
+                               alert("Insufficient wallet balance! Please Top Up E 300 first.");
+                             }
+                           }}
+                           className="mt-3 w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-[9px] py-1.5 rounded-lg transition-all text-center cursor-pointer"
+                         >
+                            Get Business
+                         </button>
+                      )}
+                   </div>
+
+                   {/* Service Provider Plan */}
+                   <div className={`p-3 rounded-2xl border flex flex-col justify-between text-left transition-all relative ${shopTier === 'service_pro' ? 'bg-indigo-50/40 border-indigo-500 ring-1 ring-indigo-500/20' : 'bg-slate-50/50 border-gray-100'}`}>
+                      {shopTier === 'service_pro' && (
+                         <div className="absolute top-2 right-2 bg-indigo-500 text-white text-[7.5px] font-black uppercase px-1.5 py-0.2 rounded-full font-mono">
+                            Active
+                         </div>
+                      )}
+                      <div>
+                         <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-wide block">Service Pro</span>
+                         <span className="font-mono text-sm font-black text-slate-800 block mt-1">E 149<span className="text-[8px] text-gray-400 font-normal">/mo</span></span>
+                         <ul className="text-[8px] text-gray-500 font-medium space-y-1 mt-2.5 font-sans">
+                            <li className="flex items-center gap-1 text-indigo-800 font-semibold">🛠️ Service Badge</li>
+                            <li className="flex items-center gap-1">📞 Unlimited Inquiries</li>
+                            <li className="flex items-center gap-1">🎯 Local Lead Gen</li>
+                            <li className="flex items-center gap-1">⭐ Top Category Rank</li>
+                         </ul>
+                      </div>
+                      {shopTier !== 'service_pro' && (
+                         <button 
+                           type="button"
+                           onClick={async () => {
+                             if (merchantBalance >= 149) {
+                               setMerchantBalance(prev => prev - 149);
+                               await updateShopTier('service_pro');
+                               alert("Welcome to the Service Pro network! You will now receive unlimited customer leads directly.");
+                             } else {
+                               alert("Insufficient wallet balance! Please Top Up E 150 first.");
+                             }
+                           }}
+                           className="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] py-1.5 rounded-lg transition-all text-center cursor-pointer"
+                         >
+                            Get Pro Leads
+                         </button>
+                      )}
+                   </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-2xl border border-gray-100/80 text-[10.5px] text-slate-600 leading-relaxed">
+                   <span className="font-bold text-slate-800">💡 Tier Benefits Recap:</span> Standard platform fee of <span className="font-bold">5.0%</span> is reduced to <span className="font-semibold text-blue-600">2.5%</span> for Premium sellers, and cut down to just <span className="font-bold text-amber-600">1.0%</span> for Business class! <span className="font-semibold text-indigo-600">Service Pro</span> skips product fees for unlimited lead generation!
+                </div>
+             </div>
+
+             {/* 3. STOREFRONT DESIGNER & CUSTOM BUSINESS PAGE */}
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4 relative overflow-hidden">
+                {shopTier === 'basic' && (
+                   <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs z-10 flex flex-col items-center justify-center p-6 text-center text-white">
+                      <Lock size={32} className="text-amber-400 mb-2 animate-bounce" />
+                      <h5 className="font-bold text-sm">Unlock Storefront Designer</h5>
+                      <p className="text-[10px] text-slate-200 mt-1 max-w-[260px] leading-relaxed">
+                         Upgrade your membership to Premium or Business to unlock custom layouts, announcement tickers, banner styling, social links, and brand colors!
+                      </p>
                       <button 
+                        type="button"
                         onClick={() => {
-                          setIsPremiumMerchant(false);
+                          const el = document.getElementById('membership-tiers-card');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
                         }}
-                        className="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs py-3 rounded-xl transition-all"
+                        className="mt-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg transition-all cursor-pointer"
                       >
-                         Cancel Subscription
+                         Upgrade Now
                       </button>
-                   ) : (
-                      <button 
-                        onClick={() => {
-                          if (merchantBalance >= 149) {
-                            setMerchantBalance(prev => prev - 149);
-                            setIsPremiumMerchant(true);
-                          } else {
-                            alert("Insufficient wallet balance! Please Top Up E 100 first.");
-                          }
-                        }}
-                        className="w-full bg-amber-600 text-white hover:bg-amber-700 font-bold text-xs py-3 rounded-xl active:scale-95 transition-all shadow-md shadow-amber-600/10"
-                      >
-                         Unlock Premium Shop (E 149/mo)
-                      </button>
-                   )}
+                   </div>
+                )}
+
+                <div className="flex items-start gap-3">
+                   <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl shrink-0"><Palette size={20} /></div>
+                   <div className="flex-1">
+                      <h4 className="font-bold text-sm text-gray-800">3. Brand Storefront Designer</h4>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                         Configure your brand identity, customize storefront color themes, set announcements, and links to social channels.
+                      </p>
+                   </div>
+                </div>
+
+                {/* Customizer Fields */}
+                <div className="flex flex-col gap-3.5 mt-2">
+                   <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                         <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Brand Theme Color:</label>
+                         <select 
+                           value={designerTheme}
+                           onChange={(e) => setDesignerTheme(e.target.value)}
+                           className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white outline-none"
+                         >
+                            <option value="emerald">🌿 Swazi Emerald</option>
+                            <option value="blue">🌊 Royal Blue</option>
+                            <option value="pink">🌸 Luxury Rose</option>
+                            <option value="amber">👑 Golden Amber</option>
+                            <option value="slate">🖤 Midnight Slate</option>
+                         </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                         <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Preset Cover Photo:</label>
+                         <select 
+                           value={designerBanner}
+                           onChange={(e) => setDesignerBanner(e.target.value)}
+                           className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white outline-none"
+                         >
+                            <option value="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800">🥬 Organic Vegetables</option>
+                            <option value="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800">🍲 Flame Grill / Food</option>
+                            <option value="https://images.unsplash.com/photo-1596422846543-74c6fc0e2811?auto=format&fit=crop&q=80&w=800">🧵 Traditional Crafts</option>
+                            <option value="https://images.unsplash.com/photo-1464226184884-fa280b87c3a9?auto=format&fit=crop&q=80&w=800">🛒 Local Marketplace</option>
+                            <option value="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&q=80&w=800">☕ Modern Cafe Stall</option>
+                         </select>
+                      </div>
+                   </div>
+
+                   <div className="flex flex-col gap-1">
+                      <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Store Announcement Ticker:</label>
+                      <input 
+                        type="text"
+                        value={designerAnnouncement}
+                        onChange={(e) => setDesignerAnnouncement(e.target.value)}
+                        placeholder="e.g. 10% discount on all organic cabbages this Friday!"
+                        className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none"
+                      />
+                   </div>
+
+                   <div className="flex flex-col gap-1">
+                      <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Store Bio / Brand Story:</label>
+                      <textarea 
+                        rows={2}
+                        value={designerDesc}
+                        onChange={(e) => setDesignerDesc(e.target.value)}
+                        placeholder="Describe your organic products..."
+                        className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none resize-none leading-relaxed"
+                      />
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                         <label className="text-[10px] text-gray-650 font-bold uppercase tracking-wide">Facebook Handle:</label>
+                         <input 
+                           type="text"
+                           value={designerFacebook}
+                           onChange={(e) => setDesignerFacebook(e.target.value)}
+                           placeholder="e.g. SiphoOrganicSells"
+                           className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                         <label className="text-[10px] text-gray-650 font-bold uppercase tracking-wide">Instagram Username:</label>
+                         <input 
+                           type="text"
+                           value={designerInstagram}
+                           onChange={(e) => setDesignerInstagram(e.target.value)}
+                           placeholder="e.g. sipho_harvests"
+                           className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none"
+                         />
+                      </div>
+                   </div>
+
+                   {/* Standard Contact updates */}
+                   <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-3 mt-1">
+                      <div className="flex flex-col gap-1">
+                         <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-wide">Store Hours:</label>
+                         <input 
+                           type="text"
+                           value={designerHours}
+                           onChange={(e) => setDesignerHours(e.target.value)}
+                           placeholder="e.g. 08:00 - 17:00"
+                           className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none"
+                         />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                         <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-wide">Location Stall / Area:</label>
+                         <input 
+                           type="text"
+                           value={designerLocation}
+                           onChange={(e) => setDesignerLocation(e.target.value)}
+                           placeholder="e.g. stall 14, Manzini"
+                           className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none"
+                         />
+                      </div>
+                   </div>
+
+                   <button 
+                     type="button"
+                     onClick={async () => {
+                       try {
+                         if (seller && seller.id) {
+                           await setDoc(doc(db, 'sellers', seller.id), {
+                             ...seller,
+                             description: designerDesc,
+                             hours: designerHours,
+                             location: designerLocation,
+                             bannerUrl: designerBanner,
+                             themeColor: designerTheme,
+                             announcement: designerAnnouncement,
+                             facebook: designerFacebook,
+                             instagram: designerInstagram
+                           });
+                           alert("Yebo! Your Premium Brand Storefront has been published successfully and is live for all Swazi buyers!");
+                         }
+                       } catch (err) {
+                         alert("Failed to save. Please try again.");
+                       }
+                     }}
+                     className="w-full bg-indigo-600 hover:bg-indigo-750 text-white font-black text-xs py-3 rounded-xl transition-all shadow-md shadow-indigo-600/10 cursor-pointer uppercase mt-2 font-mono"
+                   >
+                      Publish Storefront Design
+                   </button>
                 </div>
              </div>
 
@@ -716,7 +1089,7 @@ export default function SellerDashboard() {
                                {(() => {
                                   const commPercentage = isPremiumMerchant ? 2.5 : 5.0;
                                   const commissionFee = selectedInvoiceOrder.basePrice * (commPercentage / 100);
-                                  const logisticsPlatformCut = selectedInvoiceOrder.courier * 0.10; // 5. Delivery model platform logistics cut is 10%
+                                  const logisticsPlatformCut = selectedInvoiceOrder.courier * 0.20; // 5. Delivery model platform logistics cut is 20%
                                   const finalOrderPayout = selectedInvoiceOrder.basePrice - commissionFee;
 
                                   return (
@@ -731,11 +1104,11 @@ export default function SellerDashboard() {
                                            <span>E {selectedInvoiceOrder.courier.toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-orange-500 opacity-85 pl-2">
-                                           <span>├─ Driver Payout (90% logistics value):</span>
-                                           <span>E {(selectedInvoiceOrder.courier * 0.9).toFixed(2)}</span>
+                                           <span>├─ Driver Payout (80% logistics value):</span>
+                                           <span>E {(selectedInvoiceOrder.courier * 0.8).toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-orange-500 opacity-85 pl-2">
-                                           <span>└─ Platform logistics commission (10%):</span>
+                                           <span>└─ Platform logistics commission (20%):</span>
                                            <span>E {logisticsPlatformCut.toFixed(2)}</span>
                                         </div>
                                         
@@ -1269,21 +1642,21 @@ export default function SellerDashboard() {
                     <div className="flex items-center gap-2">
                        <div className="p-2 bg-pink-50 text-pink-600 rounded-2xl"><Package size={18} /></div>
                        <div>
-                          <h4 className="font-black text-sm text-gray-800 font-display">Featured Products Slot</h4>
-                          <span className="text-[10px] text-pink-600 font-extrabold uppercase tracking-wide">E 15.00 / day</span>
+                          <h4 className="font-black text-sm text-gray-800 font-display">Featured Listings Slot</h4>
+                          <span className="text-[10px] text-pink-600 font-extrabold uppercase tracking-wide">E 20.00 / day &bull; Discounts for Weekly & Monthly</span>
                        </div>
                     </div>
-                    <span className="text-[9px] bg-pink-100 text-pink-800 font-black px-2.5 py-0.5 rounded-full uppercase">Top Category Slot</span>
+                    <span className="text-[9px] bg-pink-100 text-pink-800 font-black px-2.5 py-0.5 rounded-full uppercase">Top Search Slot</span>
                  </div>
 
                  <p className="text-[11px] text-gray-500 leading-relaxed">
-                    Pin any listing directly to the absolute top of customer navigation categories for 24 hours. Boosts views by ~4x.
+                    Promote your products to appear at the absolute top of customer search results and category lists. Gain immediate visibility and boost sales volumes—just like Facebook Marketplace & OLX!
                  </p>
 
                  {/* Selector Form */}
                  <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100/80 flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
-                       <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-wide">Select Product to Feature:</label>
+                       <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-wide">Select Product to Promote:</label>
                        <select 
                          value={selectedFeaturedProduct} 
                          onChange={(e) => setSelectedFeaturedProduct(e.target.value)}
@@ -1295,31 +1668,125 @@ export default function SellerDashboard() {
                        </select>
                     </div>
 
+                    {/* Promoted Plan Selection */}
+                    <div className="flex flex-col gap-1.5">
+                       <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-wide">Select Promotion Plan:</label>
+                       <div className="grid grid-cols-3 gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setFeaturedPlan('daily');
+                              setFeaturedMultiplier(1);
+                            }}
+                            className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition-all ${featuredPlan === 'daily' ? 'bg-pink-50 border-pink-500 shadow-3xs' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                          >
+                             <span className="text-[9px] font-black text-pink-600 uppercase tracking-tight">Daily Boost</span>
+                             <span className="text-xs font-mono font-black text-slate-800 mt-1">E 20</span>
+                             <span className="text-[8px] text-gray-400 font-medium mt-0.5">per day</span>
+                          </button>
+                          
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setFeaturedPlan('weekly');
+                              setFeaturedMultiplier(1);
+                            }}
+                            className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition-all relative ${featuredPlan === 'weekly' ? 'bg-pink-50 border-pink-500 shadow-3xs' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                          >
+                             <div className="absolute top-[-6px] bg-amber-500 text-white text-[7px] font-black uppercase px-1 py-0.2 rounded-full tracking-tighter">
+                               SAVE E40
+                             </div>
+                             <span className="text-[9px] font-black text-pink-600 uppercase tracking-tight mt-0.5">Weekly</span>
+                             <span className="text-xs font-mono font-black text-slate-800 mt-1">E 100</span>
+                             <span className="text-[8px] text-gray-400 font-medium mt-0.5">per week</span>
+                          </button>
+
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setFeaturedPlan('monthly');
+                              setFeaturedMultiplier(1);
+                            }}
+                            className={`p-2.5 rounded-xl border flex flex-col items-center justify-center text-center transition-all relative ${featuredPlan === 'monthly' ? 'bg-pink-50 border-pink-500 shadow-3xs' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                          >
+                             <div className="absolute top-[-6px] bg-red-500 text-white text-[7px] font-black uppercase px-1 py-0.2 rounded-full tracking-tighter">
+                               SAVE E300
+                             </div>
+                             <span className="text-[9px] font-black text-pink-600 uppercase tracking-tight mt-0.5">Monthly</span>
+                             <span className="text-xs font-mono font-black text-slate-800 mt-1">E 300</span>
+                             <span className="text-[8px] text-gray-400 font-medium mt-0.5">per month</span>
+                          </button>
+                       </div>
+                    </div>
+
                     <div className="flex justify-between items-center gap-2">
                        <div className="flex-1">
-                          <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-wide block mb-1">Campaign Duration:</label>
-                          <div className="flex gap-1">
-                             {[1, 3, 5, 7].map(day => (
-                                <button 
-                                  key={`feat-day-${day}`}
-                                  type="button"
-                                  onClick={() => setFeaturedDuration(day)}
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all flex-1 ${featuredDuration === day ? 'bg-pink-600 text-white shadow-3xs' : 'bg-white text-gray-600 border border-gray-200'}`}
-                                >
-                                   {day}d
-                                </button>
-                             ))}
-                          </div>
+                          <label className="text-[10px] text-gray-600 font-extrabold uppercase tracking-wide block mb-1">
+                             Campaign Duration:
+                          </label>
+                          {featuredPlan === 'daily' && (
+                             <div className="flex gap-1">
+                                {[1, 3, 5, 7].map(val => (
+                                   <button 
+                                     key={`mult-d-${val}`}
+                                     type="button"
+                                     onClick={() => setFeaturedMultiplier(val)}
+                                     className={`px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono transition-all flex-1 ${featuredMultiplier === val ? 'bg-pink-600 text-white shadow-3xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+                                   >
+                                      {val}d
+                                   </button>
+                                ))}
+                             </div>
+                          )}
+                          {featuredPlan === 'weekly' && (
+                             <div className="flex gap-1">
+                                {[1, 2, 3, 4].map(val => (
+                                   <button 
+                                     key={`mult-w-${val}`}
+                                     type="button"
+                                     onClick={() => setFeaturedMultiplier(val)}
+                                     className={`px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono transition-all flex-1 ${featuredMultiplier === val ? 'bg-pink-600 text-white shadow-3xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+                                   >
+                                      {val}w
+                                   </button>
+                                ))}
+                             </div>
+                          )}
+                          {featuredPlan === 'monthly' && (
+                             <div className="flex gap-1">
+                                {[1, 2, 3].map(val => (
+                                   <button 
+                                     key={`mult-m-${val}`}
+                                     type="button"
+                                     onClick={() => setFeaturedMultiplier(val)}
+                                     className={`px-2.5 py-1.5 rounded-lg text-xs font-bold font-mono transition-all flex-1 ${featuredMultiplier === val ? 'bg-pink-600 text-white shadow-3xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+                                   >
+                                      {val}m
+                                   </button>
+                                ))}
+                             </div>
+                          )}
                        </div>
                        <div className="shrink-0 text-right pl-3">
                           <span className="text-[10px] text-gray-400 font-bold block">Total Budget:</span>
-                          <span className="font-mono text-sm font-black text-pink-600">E {(featuredDuration * 15).toFixed(2)}</span>
+                          <span className="font-mono text-sm font-black text-pink-600">
+                             E {(() => {
+                                if (featuredPlan === 'daily') return featuredMultiplier * 20;
+                                if (featuredPlan === 'weekly') return featuredMultiplier * 100;
+                                return featuredMultiplier * 300;
+                             })().toFixed(2)}
+                          </span>
                        </div>
                     </div>
 
                     <button 
                       onClick={() => {
-                        const calculatedCost = featuredDuration * 15;
+                        const calculatedCost = (() => {
+                          if (featuredPlan === 'daily') return featuredMultiplier * 20;
+                          if (featuredPlan === 'weekly') return featuredMultiplier * 100;
+                          return featuredMultiplier * 300;
+                        })();
+                        
                         if (merchantBalance < calculatedCost) {
                           alert("Insufficient balance! Please click '+ MTN MoMo Deposit' to add funds.");
                           return;
@@ -1332,41 +1799,70 @@ export default function SellerDashboard() {
                           alert("This product is already featured on eMakethe!");
                           return;
                         }
+                        
                         setMerchantBalance(prev => prev - calculatedCost);
                         setFeaturedProducts(prev => [...prev, selectedFeaturedProduct]);
-                        alert(`Successfully Featured ${products.find(p => p.id === selectedFeaturedProduct)?.name || 'Product'}! E ${calculatedCost.toFixed(2)} has been loaded into campaign secure escrow.`);
+                        setFeaturedCampaignsMeta(prev => ({
+                          ...prev,
+                          [selectedFeaturedProduct]: {
+                            planType: featuredPlan,
+                            multiplier: featuredMultiplier,
+                            cost: calculatedCost,
+                            dateAdded: new Date().toISOString()
+                          }
+                        }));
+                        
+                        alert(`Successfully Featured ${products.find(p => p.id === selectedFeaturedProduct)?.name || 'Product'}! E ${calculatedCost.toFixed(2)} has been loaded from your wallet into the campaign secure escrow.`);
                       }}
-                      className="w-full bg-pink-600 hover:bg-pink-700 text-white font-black text-xs py-2.5 rounded-xl transition-all active:scale-95 shadow-sm mt-1 uppercase"
+                      className="w-full bg-pink-600 hover:bg-pink-700 text-white font-black text-xs py-2.5 rounded-xl transition-all active:scale-95 shadow-sm mt-1 uppercase cursor-pointer"
                     >
-                       Boost Category Ranking Now
+                       Boost Search Ranking Now
                     </button>
                  </div>
 
                  {/* ACTIVE FEATURED CAMPAIGNS MONITOR */}
                  {featuredProducts.length > 0 && (
                     <div className="mt-1 border-t border-gray-100 pt-3 flex flex-col gap-2">
-                       <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider block">Live Featured Placements ({featuredProducts.length})</span>
+                       <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider block">Live Promoted Placements ({featuredProducts.length})</span>
                        <div className="flex flex-col gap-2">
                           {featuredProducts.map(prodId => {
                              const originalProd = PRODUCTS.find(p => p.id === prodId);
+                             const meta = featuredCampaignsMeta[prodId];
+                             
+                             const planLabel = meta ? (meta.planType === 'daily' ? 'Daily Boost' : meta.planType === 'weekly' ? 'Weekly Accel' : 'Monthly Dom') : 'Daily Boost';
+                             const durationLabel = meta ? (meta.planType === 'daily' ? `${meta.multiplier}d` : meta.planType === 'weekly' ? `${meta.multiplier}w` : `${meta.multiplier}m`) : '24h';
+                             const totalCost = meta ? meta.cost : 15;
+
                              return (
                                 <div key={`act-feat-${prodId}`} className="border border-pink-100 bg-pink-50/10 p-3 rounded-2xl flex items-center justify-between gap-2.5 animate-in slide-in-from-bottom-2">
                                    <div className="flex items-center gap-2">
                                       <img src={originalProd?.images[0]} className="w-8 h-8 rounded-lg object-cover" />
                                       <div>
                                          <h5 className="text-xs font-bold text-gray-800 line-clamp-1">{originalProd?.name || 'My Product'}</h5>
-                                         <p className="text-[9px] text-gray-400 font-bold font-mono">152 views • 12 clicks • CTR 7.8%</p>
+                                         <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[8px] bg-pink-100 text-pink-700 px-1.5 py-0.2 rounded font-mono font-bold uppercase">{planLabel} ({durationLabel})</span>
+                                            <span className="text-[9px] text-gray-400 font-bold font-mono">152 views &bull; CTR 7.8%</span>
+                                         </div>
                                       </div>
                                    </div>
                                    <div className="text-right flex flex-col items-end gap-1">
-                                      <span className="text-[9px] bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded font-black uppercase font-mono">ACTIVE: ~23h left</span>
+                                      <span className="text-[9px] bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded font-black uppercase font-mono">
+                                         ACTIVE: ~{meta?.planType === 'daily' ? '23h' : meta?.planType === 'weekly' ? '6.5d' : '29d'} left
+                                      </span>
                                       <button 
                                         onClick={() => {
                                           setFeaturedProducts(p => p.filter(id => id !== prodId));
-                                          setMerchantBalance(prev => prev + 15); // refund simulated balance
-                                          alert("Campaign terminated early! Remaining daily fee (E15.00) returned to your seller wallet.");
+                                          setMerchantBalance(prev => prev + totalCost); // refund simulated balance
+                                          
+                                          setFeaturedCampaignsMeta(prev => {
+                                            const updated = { ...prev };
+                                            delete updated[prodId];
+                                            return updated;
+                                          });
+
+                                          alert(`Campaign terminated early! Remaining fee (E ${totalCost.toFixed(2)}) returned to your seller wallet.`);
                                         }}
-                                        className="text-[9px] font-bold text-red-600 hover:underline"
+                                        className="text-[9px] font-bold text-red-600 hover:underline cursor-pointer"
                                       >
                                          Stop Ad & Refund
                                       </button>
@@ -1781,10 +2277,13 @@ export default function SellerDashboard() {
                 <div className="flex items-start gap-3">
                   <div className="mt-1 flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-500 shrink-0"><Phone size={16} className="fill-gray-100 text-gray-500" /></div>
                   <div className="flex-1">
-                     <h4 className="font-bold text-sm text-gray-800">Basic Level</h4>
+                     <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-sm text-gray-800">Basic Verification</h4>
+                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">Free</span>
+                     </div>
                      <p className="text-[11px] text-gray-500 mt-1 mb-2">Phone verified via SMS OTP for secure logins.</p>
-                     <div className="mt-2 text-xs font-bold text-gray-700 flex items-center gap-1">
-                        <CheckCircle2 size={12} className="text-gray-500" /> Mobile OTP Verified (+268 76XX XXXX)
+                     <div className="mt-2 text-xs font-bold text-green-700 flex items-center gap-1">
+                        <CheckCircle2 size={14} className="text-green-600" /> Account Verified
                      </div>
                   </div>
                 </div>
@@ -1794,11 +2293,14 @@ export default function SellerDashboard() {
                 <div className="flex items-start gap-3">
                   <div className="mt-1 flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 shrink-0"><Fingerprint size={16} className="text-blue-500" /></div>
                   <div className="flex-1">
-                     <h4 className="font-bold text-sm text-gray-800">Verified Level</h4>
-                     <p className="text-[11px] text-gray-500 mt-1 mb-2">Identity verified (National ID) to prevent fraud.</p>
                      <div className="flex justify-between items-center">
-                       <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Pending ID Approval</span>
-                       <button className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg active:scale-95 transition-transform">Update ID</button>
+                        <h4 className="font-bold text-sm text-gray-800">Verified Seller</h4>
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase tracking-wider">E 100</span>
+                     </div>
+                     <p className="text-[11px] text-gray-500 mt-1 mb-2">One-time fee. Identity verified (National ID) to prevent fraud. Unlocks trust badge.</p>
+                     <div className="flex justify-between items-center mt-2">
+                       <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Unverified</span>
+                       <button className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg active:scale-95 transition-transform" onClick={() => alert('Proceeding to Verification Payment (E100)...')}>Verify ID & Pay</button>
                      </div>
                   </div>
                 </div>
@@ -1808,11 +2310,14 @@ export default function SellerDashboard() {
                 <div className="flex items-start gap-3">
                   <div className="mt-1 flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 text-amber-500 shrink-0"><ShieldCheck size={16} className="fill-amber-100 text-amber-500" /></div>
                   <div className="flex-1">
-                     <h4 className="font-bold text-sm text-gray-800">Premium Level</h4>
-                     <p className="text-[11px] text-gray-500 mt-1 mb-2">Business verified. Unlocks top search ranking.</p>
                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-sm text-gray-800">Premium Verification</h4>
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded uppercase tracking-wider">E 350</span>
+                     </div>
+                     <p className="text-[11px] text-gray-500 mt-1 mb-2">One-time fee. Full Business verified. Unlocks top search ranking and increased buyer confidence.</p>
+                     <div className="flex justify-between items-center mt-2">
                        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Unverified</span>
-                       <button className="text-[10px] font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg active:scale-95 transition-transform">Submit Documents</button>
+                       <button className="text-[10px] font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg active:scale-95 transition-transform" onClick={() => alert('Proceeding to Premium Verification Payment (E350)...')}>Submit Documents</button>
                      </div>
                   </div>
                 </div>

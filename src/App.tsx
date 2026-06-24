@@ -18,6 +18,7 @@ import Checkout from './pages/Checkout';
 import DriverDashboard from './pages/DriverDashboard';
 import NearbyMap from './pages/NearbyMap';
 import AdminDashboard from './pages/AdminDashboard';
+import Advertise from './pages/Advertise';
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="register-seller" element={<RegisterSeller />} />
             <Route path="driver" element={<DriverDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />
+            <Route path="advertise" element={<Advertise />} />
           </Route>
           <Route path="/checkout/:id" element={<Checkout />} />
           <Route path="/map" element={<NearbyMap />} />

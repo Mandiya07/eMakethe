@@ -46,6 +46,12 @@ export default function RoleSwitcher() {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('emakethe_open_portal_switcher', handleOpen);
+    return () => window.removeEventListener('emakethe_open_portal_switcher', handleOpen);
+  }, []);
+
   // Detect current active persona
   const getActivePersonaName = () => {
     if (currentPath === '/admin') return 'Administrator';
@@ -103,7 +109,7 @@ export default function RoleSwitcher() {
             </div>
 
             {/* Interactive Roles Container */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
               <p className="text-[10px] text-gray-500 font-medium px-1 leading-normal">
                 eMakethe supports multiple business portals on a single unified account. Switch your active portal to browse goods, manage vendor stalls, coordinate deliveries, or administer platform rules:
               </p>

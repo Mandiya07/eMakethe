@@ -1,7 +1,8 @@
-import { Users, Store, ShieldAlert, BarChart3, Tag, DollarSign, Search, CheckCircle2, XCircle, Coins, Megaphone, Truck, Sparkles, Award, Lock, Eye, EyeOff, ShieldCheck, UserCheck } from 'lucide-react';
+import { Users, Store, ShieldAlert, BarChart3, Tag, DollarSign, Search, CheckCircle2, XCircle, Coins, Megaphone, Truck, Sparkles, Award, Lock, Eye, EyeOff, ShieldCheck, UserCheck, Briefcase } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { NotificationsPopover, NotificationItem } from '../components/NotificationsPopover';
 
 export default function AdminDashboard() {
   // Onboarding & Admin Gate States
@@ -68,11 +69,16 @@ export default function AdminDashboard() {
 
   // Revenue settings representing the Platform's core Revenue Model
   const [commissionRate, setCommissionRate] = useState(5.0); // 1. Commission Model: Percentage per transaction
+  const [simAverageTx, setSimAverageTx] = useState(150); // Growth Simulator: Average Transaction Amount (E)
+  const [simMonthlyVolume, setSimMonthlyVolume] = useState(50000); // Growth Simulator: Monthly Volume
   const [premiumMonthlyFee, setPremiumMonthlyFee] = useState(149); // 2. Premium Shops: Monthly subscription
-  const [featuredListingFee, setFeaturedListingFee] = useState(15); // 3. Featured Listings: Paid promotion
+  const [featuredListingFee, setFeaturedListingFee] = useState(20); // 3. Featured Listings: Paid promotion
   const [adBannerFee, setAdBannerFee] = useState(100); // 4. Advertisements: Local business ads
-  const [deliveryCommRate, setDeliveryCommRate] = useState(10.0); // 5. Delivery Fees: Commission from logistics
+  const [deliveryCommRate, setDeliveryCommRate] = useState(20.0); // 5. Delivery Fees: Commission from logistics
   const [digitalToolsFee, setDigitalToolsFee] = useState(49); // 6. Digital Services: Business tools for traders
+  const [momoPlatformFeeRate, setMomoPlatformFeeRate] = useState(1.0); // 7. Mobile Money Platform Fee
+  const [verificationFee, setVerificationFee] = useState(100); // 8. Business Verification Fee
+  const [serviceProviderFee, setServiceProviderFee] = useState(149); // 9. Service Provider Subscription
 
   // Estimated stats calculated based on current rates
   const totalSalesVolume = 124020; // E 124,020 in marketplace sales
@@ -80,8 +86,11 @@ export default function AdminDashboard() {
   const activePromoDailyCount = 54;
   const activeAdBannersCount = 8;
   const totalCompletedDeliveries = 8912;
-  const averageDeliveryFee = 15; // E 15 per delivery
+  const averageDeliveryFee = 50; // E 50 per delivery
   const digitalToolsSubscribers = 42;
+  const totalMobileMoneyVolume = 95000;
+  const verifiedSellersCount = 120;
+  const serviceProvidersCount = 85;
 
   // Real-time calculations of revenue streams based on dynamic inputs
   const estimatedCommissionRev = (totalSalesVolume * (commissionRate / 100));
@@ -90,8 +99,21 @@ export default function AdminDashboard() {
   const estimatedAdRev = activeAdBannersCount * adBannerFee * 4; // 4-week projection
   const estimatedDeliveryRev = totalCompletedDeliveries * averageDeliveryFee * (deliveryCommRate / 100);
   const estimatedDigitalRev = digitalToolsSubscribers * digitalToolsFee;
+  const estimatedMomoFeeRev = totalMobileMoneyVolume * (momoPlatformFeeRate / 100);
+  const estimatedVerificationRev = verifiedSellersCount * verificationFee;
+  const estimatedServiceProviderRev = serviceProvidersCount * serviceProviderFee;
 
-  const totalCalculatedProjectedMonthly = estimatedPremiumRev + (estimatedPromoRev / 12) + (estimatedAdRev / 12) + (estimatedDigitalRev) + (estimatedCommissionRev / 12) + (estimatedDeliveryRev / 12);
+  const totalCalculatedProjectedMonthly = estimatedPremiumRev + (estimatedPromoRev / 12) + (estimatedAdRev / 12) + (estimatedDigitalRev) + (estimatedCommissionRev / 12) + (estimatedDeliveryRev / 12) + (estimatedMomoFeeRev / 12) + (estimatedVerificationRev / 12) + estimatedServiceProviderRev;
+
+  const [adminNotifications, setAdminNotifications] = useState<NotificationItem[]>([
+    { id: '1', type: 'error', title: 'Failed Payment Alert', message: 'System detected multiple failed MoMo attempts from User ID: U8912.', time: '12m ago', read: false },
+    { id: '2', type: 'warning', title: 'Suspicious Transaction', message: 'Unusually large order of E 12,000 flagged for review (Seller ID: S400).', time: '1h ago', read: false },
+    { id: '3', type: 'error', title: 'System Payment Error', message: 'Gateway timeout reported by Mobile Money API at 14:02 UTC.', time: '2h ago', read: true },
+  ]);
+
+  const markAdminNotificationsRead = () => {
+    setAdminNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   if (!adminId) {
     return (
@@ -212,8 +234,13 @@ export default function AdminDashboard() {
           <h1 className="text-lg font-bold font-display">Admin Portal</h1>
           <p className="text-[10px] text-slate-300">MaketiConnect System</p>
         </div>
-        <div className="bg-slate-700 p-2 rounded-full">
-          <ShieldAlert size={20} className="text-white" />
+        <div className="bg-slate-700 p-1 rounded-full">
+          <NotificationsPopover 
+            notifications={adminNotifications} 
+            onMarkAllAsRead={markAdminNotificationsRead} 
+            triggerColor="text-white"
+            dotColor="bg-red-500"
+          />
         </div>
       </div>
 
@@ -292,13 +319,149 @@ export default function AdminDashboard() {
                        <span className="text-slate-400">Banner Ads:</span>
                        <span className="font-bold text-slate-200">E {estimatedAdRev.toLocaleString()}</span>
                      </div>
-                     <div className="flex justify-between pb-1">
+                     <div className="flex justify-between pb-1 border-b border-slate-800/50">
                        <span className="text-slate-400">Logistics Cut:</span>
                        <span className="font-bold text-slate-200">E {estimatedDeliveryRev.toLocaleString()}</span>
                      </div>
-                     <div className="flex justify-between pb-1">
+                     <div className="flex justify-between pb-1 border-b border-slate-800/50">
                        <span className="text-slate-400">Trader Tools:</span>
                        <span className="font-bold text-slate-200">E {estimatedDigitalRev.toLocaleString()}</span>
+                     </div>
+                     <div className="flex justify-between pb-1 border-b border-slate-800/50">
+                       <span className="text-slate-400">MoMo Fees:</span>
+                       <span className="font-bold text-slate-200">E {estimatedMomoFeeRev.toLocaleString()}</span>
+                     </div>
+                     <div className="flex justify-between pb-1 border-b border-slate-800/50">
+                       <span className="text-slate-400">Verifications:</span>
+                       <span className="font-bold text-slate-200">E {estimatedVerificationRev.toLocaleString()}</span>
+                     </div>
+                     <div className="flex justify-between pb-1">
+                       <span className="text-slate-400">Service Providers:</span>
+                       <span className="font-bold text-slate-200">E {estimatedServiceProviderRev.toLocaleString()}</span>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* TRANSACTION COMMISSION GROWTH & SCALE SIMULATOR */}
+            <div className="bg-gradient-to-br from-emerald-900 via-slate-950 to-slate-900 border border-emerald-800/40 text-white p-5 rounded-3xl shadow-xl relative overflow-hidden flex flex-col gap-4">
+               <div className="absolute right-0 top-0 bg-emerald-500 text-slate-950 text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider font-mono">
+                  🚀 MOST POWERFUL STREAM
+               </div>
+               
+               <div>
+                  <h3 className="font-display font-black text-xs text-slate-100 flex items-center gap-1.5 uppercase tracking-wide">
+                     📈 Commission Growth & Scale Simulator
+                  </h3>
+                  <p className="text-[10px] text-slate-300 mt-1 leading-relaxed">
+                     Simulate how a small platform commission per transaction scales as the marketplace expands. As active shops grow, transaction volumes compound this into highly stable recurring revenue.
+                  </p>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-y border-slate-800/60 py-4">
+                  {/* SLIDER 1: COMMISSION RATE */}
+                  <div className="flex flex-col gap-2">
+                     <div className="flex justify-between items-center text-[10px]">
+                        <span className="text-slate-400 font-bold uppercase">Commission Rate:</span>
+                        <span className="font-mono font-black text-emerald-400 text-xs">{commissionRate}%</span>
+                     </div>
+                     <input 
+                       type="range" 
+                       min="1" 
+                       max="15" 
+                       step="0.5"
+                       value={commissionRate}
+                       onChange={(e) => setCommissionRate(parseFloat(e.target.value))}
+                       className="w-full accent-emerald-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                     />
+                     <span className="text-[8px] text-slate-500 font-medium">Synced with core revenue settings</span>
+                  </div>
+
+                  {/* SLIDER 2: AVERAGE TRANSACTION */}
+                  <div className="flex flex-col gap-2">
+                     <div className="flex justify-between items-center text-[10px]">
+                        <span className="text-slate-400 font-bold uppercase">Avg Sale Value:</span>
+                        <span className="font-mono font-black text-emerald-400 text-xs">E {simAverageTx}</span>
+                     </div>
+                     <input 
+                       type="range" 
+                       min="10" 
+                       max="500" 
+                       step="5"
+                       value={simAverageTx}
+                       onChange={(e) => setSimAverageTx(parseInt(e.target.value))}
+                       className="w-full accent-emerald-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                     />
+                     <span className="text-[8px] text-slate-500 font-medium">E.g., Vegetables, livestock, clothing, etc.</span>
+                  </div>
+
+                  {/* SLIDER 3: MONTHLY TRANSACTIONS */}
+                  <div className="flex flex-col gap-2">
+                     <div className="flex justify-between items-center text-[10px]">
+                        <span className="text-slate-400 font-bold uppercase">Monthly Transactions:</span>
+                        <span className="font-mono font-black text-emerald-400 text-xs">{simMonthlyVolume.toLocaleString()} tx</span>
+                     </div>
+                     <input 
+                       type="range" 
+                       min="500" 
+                       max="100000" 
+                       step="500"
+                       value={simMonthlyVolume}
+                       onChange={(e) => setSimMonthlyVolume(parseInt(e.target.value))}
+                       className="w-full accent-emerald-500 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                     />
+                     <span className="text-[8px] text-slate-500 font-medium">Marketplace growth projection</span>
+                  </div>
+               </div>
+
+               {/* RESULTS BOX */}
+               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-950/55 p-3 rounded-2xl border border-slate-800/40">
+                  <div className="flex flex-col">
+                     <span className="text-[8px] text-slate-400 uppercase font-black tracking-wide">Earned Per Sale</span>
+                     <span className="text-xs font-mono font-extrabold text-slate-200 mt-1">
+                        E {(simAverageTx * (commissionRate / 100)).toFixed(2)}
+                     </span>
+                     <span className="text-[8px] text-slate-500 mt-0.5">At current {commissionRate}% commission</span>
+                  </div>
+                  <div className="flex flex-col border-l border-slate-800/40 pl-3">
+                     <span className="text-[8px] text-slate-400 uppercase font-black tracking-wide">Projected Monthly</span>
+                     <span className="text-xs font-mono font-extrabold text-emerald-400 mt-1">
+                        E {(simMonthlyVolume * simAverageTx * (commissionRate / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                     </span>
+                     <span className="text-[8px] text-slate-500 mt-0.5">Based on {simMonthlyVolume.toLocaleString()} sales</span>
+                  </div>
+                  <div className="flex flex-col col-span-2 md:col-span-1 border-l md:border-l border-slate-800/40 pl-0 md:pl-3 pt-2 md:pt-0 border-t md:border-t-0 mt-2 md:mt-0">
+                     <span className="text-[8px] text-slate-400 uppercase font-black tracking-wide">Projected Annual</span>
+                     <span className="text-xs font-mono font-extrabold text-yellow-400 mt-1">
+                        E {(simMonthlyVolume * simAverageTx * (commissionRate / 100) * 12).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                     </span>
+                     <span className="text-[8px] text-slate-500 mt-0.5">Annual recurring platform flow</span>
+                  </div>
+               </div>
+
+               {/* Growth Milestones Timeline */}
+               <div className="flex flex-col gap-2">
+                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Compounding Marketplace Scale Milestones:</span>
+                  <div className="grid grid-cols-4 gap-1 text-[9px] font-mono">
+                     <div className={`p-2 rounded-xl flex flex-col justify-between border ${simMonthlyVolume >= 1000 ? 'bg-emerald-950/35 border-emerald-800/40 text-slate-100' : 'bg-slate-900/30 border-slate-800/20 text-slate-400'}`}>
+                        <span className="font-sans font-bold text-slate-300">Basic</span>
+                        <span className="font-extrabold text-[10px] mt-1 text-slate-200">1K tx</span>
+                        <span className="mt-1.5 font-bold text-emerald-400">E {((1000) * simAverageTx * (commissionRate / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+                     </div>
+                     <div className={`p-2 rounded-xl flex flex-col justify-between border ${simMonthlyVolume >= 10000 ? 'bg-emerald-950/35 border-emerald-800/40 text-slate-100' : 'bg-slate-900/30 border-slate-800/20 text-slate-400'}`}>
+                        <span className="font-sans font-bold text-slate-300">Scaling</span>
+                        <span className="font-extrabold text-[10px] mt-1 text-slate-200">10K tx</span>
+                        <span className="mt-1.5 font-bold text-emerald-400">E {((10000) * simAverageTx * (commissionRate / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+                     </div>
+                     <div className={`p-2 rounded-xl flex flex-col justify-between border ${simMonthlyVolume >= 50000 ? 'bg-emerald-950/50 border-emerald-500/30 text-white shadow-sm ring-1 ring-emerald-500/20' : 'bg-slate-900/30 border-slate-800/20 text-slate-400'}`}>
+                        <span className="font-sans font-bold text-slate-200 flex items-center gap-0.5">Growth ★</span>
+                        <span className="font-extrabold text-[10px] mt-1 text-white">50K tx</span>
+                        <span className="mt-1.5 font-bold text-emerald-400">E {((50000) * simAverageTx * (commissionRate / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
+                     </div>
+                     <div className={`p-2 rounded-xl flex flex-col justify-between border ${simMonthlyVolume >= 100000 ? 'bg-emerald-950/35 border-emerald-800/40 text-slate-100' : 'bg-slate-900/30 border-slate-800/20 text-slate-400'}`}>
+                        <span className="font-sans font-bold text-slate-300">Hyper</span>
+                        <span className="font-extrabold text-[10px] mt-1 text-slate-200">100K tx</span>
+                        <span className="mt-1.5 font-bold text-emerald-400">E {((100000) * simAverageTx * (commissionRate / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo</span>
                      </div>
                   </div>
                </div>
@@ -442,7 +605,7 @@ export default function AdminDashboard() {
                <input 
                  type="range" 
                  min="5" 
-                 max="25" 
+                 max="50" 
                  step="1"
                  value={deliveryCommRate}
                  onChange={(e) => setDeliveryCommRate(parseInt(e.target.value))}
@@ -481,6 +644,93 @@ export default function AdminDashboard() {
                <div className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg">
                   <span className="text-gray-500">Premium Tools Adoption:</span>
                   <span className="font-bold text-purple-700">E {estimatedDigitalRev.toLocaleString()} / mo</span>
+               </div>
+            </div>
+
+            {/* 7. MOBILE MONEY FEE */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 mb-6">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><DollarSign size={16} /></div>
+                     <div>
+                        <h4 className="font-bold text-xs text-gray-800">7. MoMo Platform Fee</h4>
+                        <p className="text-[9px] text-gray-400 font-medium">Service fee on payments</p>
+                     </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">{momoPlatformFeeRate.toFixed(1)}%</span>
+               </div>
+               
+               <input 
+                 type="range" 
+                 min="0.5" 
+                 max="5.0" 
+                 step="0.5"
+                 value={momoPlatformFeeRate}
+                 onChange={(e) => setMomoPlatformFeeRate(parseFloat(e.target.value))}
+                 className="w-full accent-emerald-600 h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+               />
+
+               <div className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg">
+                  <span className="text-gray-500">Transaction Fee Yield:</span>
+                  <span className="font-bold text-emerald-700">E {estimatedMomoFeeRev.toLocaleString()} / overall</span>
+               </div>
+            </div>
+
+            {/* 8. BUSINESS VERIFICATION FEE */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 mb-6">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><ShieldAlert size={16} /></div>
+                     <div>
+                        <h4 className="font-bold text-xs text-gray-800">8. Verification Fee</h4>
+                        <p className="text-[9px] text-gray-400 font-medium">One-time fee for Verified Sellers</p>
+                     </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">E {verificationFee}</span>
+               </div>
+               
+               <input 
+                 type="range" 
+                 min="50" 
+                 max="200" 
+                 step="10"
+                 value={verificationFee}
+                 onChange={(e) => setVerificationFee(parseInt(e.target.value))}
+                 className="w-full accent-blue-600 h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+               />
+
+               <div className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg">
+                  <span className="text-gray-500">Verification Yield:</span>
+                  <span className="font-bold text-blue-700">E {estimatedVerificationRev.toLocaleString()} / overall</span>
+               </div>
+            </div>
+
+            {/* 9. SERVICE PROVIDER SUBSCRIPTION */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3 mb-6">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                     <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Briefcase size={16} /></div>
+                     <div>
+                        <h4 className="font-bold text-xs text-gray-800">9. Service Provider Plan</h4>
+                        <p className="text-[9px] text-gray-400 font-medium">Monthly fee for Tradesmen & Tutors</p>
+                     </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">E {serviceProviderFee}/mo</span>
+               </div>
+               
+               <input 
+                 type="range" 
+                 min="50" 
+                 max="500" 
+                 step="10"
+                 value={serviceProviderFee}
+                 onChange={(e) => setServiceProviderFee(parseInt(e.target.value))}
+                 className="w-full accent-indigo-600 h-1 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+               />
+
+               <div className="flex justify-between items-center text-[10px] bg-slate-50 p-2 rounded-lg">
+                  <span className="text-gray-500">Provider Subscriptions:</span>
+                  <span className="font-bold text-indigo-700">E {estimatedServiceProviderRev.toLocaleString()} / mo</span>
                </div>
             </div>
          </div>

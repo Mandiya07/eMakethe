@@ -297,7 +297,7 @@ export default function ProductDetails() {
   };
 
   const totalPrice = product.price * quantity;
-  const deliveryFee = selectedDelivery === 'courier' ? 15 : selectedDelivery === 'trader' ? 8 : 0;
+  const deliveryFee = selectedDelivery === 'courier' ? 50 : selectedDelivery === 'trader' ? 15 : 0;
   const grandTotal = totalPrice + deliveryFee;
 
   return (

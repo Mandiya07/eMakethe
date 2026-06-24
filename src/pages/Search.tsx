@@ -9,6 +9,12 @@ export default function Search() {
   const [query, setQuery] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [voiceNotification, setVoiceNotification] = useState('');
+  const [featuredProductIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_featured_products');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
   const handleVoiceSearch = () => {
     if (isVoiceActive) {
@@ -70,6 +76,29 @@ export default function Search() {
   
   const results = PRODUCTS.filter(p => p.name.toLowerCase().includes(query.toLowerCase()) || p.description.toLowerCase().includes(query.toLowerCase()));
 
+  // Prioritize featured products to appear at the absolute top, followed by Business and Premium seller tiers
+  const sortedResults = [...results].sort((a, b) => {
+    // 1. Advertised/Featured listings get absolute top priority
+    const aFeatured = featuredProductIds.includes(a.id);
+    const bFeatured = featuredProductIds.includes(b.id);
+    if (aFeatured && !bFeatured) return -1;
+    if (!aFeatured && bFeatured) return 1;
+
+    // 2. Rank based on merchant tier verification levels (Priority search placement)
+    const aSeller = SELLERS[a.sellerId];
+    const bSeller = SELLERS[b.sellerId];
+    const aLevel = aSeller?.verificationLevel || 'basic';
+    const bLevel = bSeller?.verificationLevel || 'basic';
+
+    if (aLevel === 'premium' && bLevel !== 'premium') return -1;
+    if (aLevel !== 'premium' && bLevel === 'premium') return 1;
+
+    if (aLevel === 'verified' && bLevel === 'basic') return -1;
+    if (aLevel === 'basic' && bLevel === 'verified') return 1;
+
+    return 0;
+  });
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 w-full relative pb-20">
       <div className="bg-white px-4 py-4 pt-6 shadow-sm border-b border-gray-100 sticky top-0 z-10 w-full flex items-center gap-3">
@@ -111,16 +140,28 @@ export default function Search() {
           <h2 className="text-sm font-bold text-gray-800">
             {query ? `Results for "${query}"` : "Suggested for you"}
           </h2>
-          <span className="text-xs text-gray-500 font-medium">{results.length} items</span>
+          <span className="text-xs text-gray-500 font-medium">{sortedResults.length} items</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {results.map(product => {
+          {sortedResults.map(product => {
             const seller = SELLERS[product.sellerId];
             if (!seller) return null;
+            const isFeatured = featuredProductIds.includes(product.id);
             return (
-              <Link to={`/product/${product.id}`} key={product.id} className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex gap-3">
-                <img src={product.images[0]} className="w-24 h-24 rounded-xl object-cover" />
+              <Link 
+                to={`/product/${product.id}`} 
+                key={product.id} 
+                className={`p-3 rounded-2xl shadow-sm border flex gap-3 transition-all relative overflow-hidden ${isFeatured ? 'bg-white border-pink-200/80 shadow-xs ring-1 ring-pink-100/30' : 'bg-white border-gray-100'}`}
+              >
+                <div className="relative shrink-0">
+                  <img src={product.images[0]} className="w-24 h-24 rounded-xl object-cover" />
+                  {isFeatured && (
+                    <span className="absolute top-1 left-1 bg-pink-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider font-mono">
+                       🔥 Promoted
+                    </span>
+                  )}
+                </div>
                 <div className="flex-1 py-1 flex flex-col">
                   <div className="flex justify-between items-start">
                     <h3 className="font-bold text-gray-800 text-sm line-clamp-1">{product.name}</h3>

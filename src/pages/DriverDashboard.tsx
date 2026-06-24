@@ -133,10 +133,10 @@ export default function DriverDashboard() {
     const updated = escrowOrders.map(esc => esc.id === id ? { ...esc, status: 'Delivered', description: 'Package dropped off. Awaiting buyer confirmation release.' } : esc);
     syncLocalStorage(updated);
     setActiveEscrowId(null);
-    setTodayEarnings(prev => prev + 25.00);
+    setTodayEarnings(prev => prev + 40.00);
     setDeliveryCount(prev => prev + 1);
     setRecentPayouts(prev => [
-      { id: id, time: 'Just now', amount: 25.00 },
+      { id: id, time: 'Just now', amount: 40.00 },
       ...prev
     ]);
     setActiveTab('earnings');
@@ -144,13 +144,13 @@ export default function DriverDashboard() {
 
   const handleCompleteJob = () => {
     setHasActiveJob(false);
-    setTodayEarnings(prev => prev + 25.00);
+    setTodayEarnings(prev => prev + 40.00);
     setDeliveryCount(prev => prev + 1);
     setHoursSpent(prev => parseFloat((prev + 0.5).toFixed(1)));
     
     // Add new payout record
     setRecentPayouts(prev => [
-      { id: '#982', time: 'Just now', amount: 25.00 },
+      { id: '#982', time: 'Just now', amount: 40.00 },
       ...prev
     ]);
     
@@ -379,14 +379,21 @@ export default function DriverDashboard() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between bg-blue-50 p-3 rounded-xl mb-3 border border-blue-100">
-                     <div className="flex items-center gap-2">
-                       <Package size={16} className="text-blue-600" />
-                       <span className="text-xs font-bold text-blue-800 leading-normal line-clamp-1">{esc.item}</span>
+                  <div className="flex flex-col gap-1.5 bg-blue-50 p-3 rounded-xl mb-3 border border-blue-100">
+                     <div className="flex items-center justify-between border-b border-blue-200/50 pb-2 mb-0.5">
+                       <span className="text-[10px] font-bold text-blue-900 line-clamp-1">{esc.item} - Total Delivery Fee</span>
+                       <span className="text-[10px] font-bold text-blue-900">E 50.00</span>
                      </div>
-                     <div className="text-right shrink-0">
-                       <span className="block text-[10px] text-gray-500 font-medium">Earn (MoMo)</span>
-                       <span className="font-bold text-green-600 text-sm">E 25.00</span>
+                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium">
+                       <span>Platform Commission (20%)</span>
+                       <span className="text-red-500">- E 10.00</span>
+                     </div>
+                     <div className="flex items-center justify-between pt-1">
+                       <div className="flex items-center gap-1.5">
+                         <Package size={14} className="text-green-600" />
+                         <span className="text-[11px] font-black text-gray-800 leading-normal line-clamp-1">Your Payout (MoMo)</span>
+                       </div>
+                       <span className="font-black text-green-600 text-sm">E 40.00</span>
                      </div>
                   </div>
 
@@ -424,14 +431,21 @@ export default function DriverDashboard() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl mb-3">
-                     <div className="flex items-center gap-2">
-                       <Package size={16} className="text-gray-500" />
-                       <span className="text-xs font-bold text-gray-700">Small Package (2kg)</span>
+                  <div className="flex flex-col gap-1.5 bg-gray-50 p-3 rounded-xl mb-3">
+                     <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-0.5">
+                       <span className="text-[10px] font-bold text-gray-800 line-clamp-1">Small Package (2kg) - Delivery Fee</span>
+                       <span className="text-[10px] font-bold text-gray-800">E 50.00</span>
                      </div>
-                     <div className="text-right">
-                       <span className="block text-[10px] text-gray-500 font-medium">You Earn</span>
-                       <span className="font-bold text-green-600 text-sm">E 25.00</span>
+                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium">
+                       <span>Platform Commission (20%)</span>
+                       <span className="text-red-500">- E 10.00</span>
+                     </div>
+                     <div className="flex items-center justify-between pt-1">
+                       <div className="flex items-center gap-1.5">
+                         <Package size={14} className="text-green-600" />
+                         <span className="text-[11px] font-black text-gray-800 leading-normal line-clamp-1">You Earn</span>
+                       </div>
+                       <span className="font-black text-green-600 text-sm">E 40.00</span>
                      </div>
                   </div>
 

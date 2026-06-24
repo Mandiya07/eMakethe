@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Bell, MapPin, Store, Leaf, Pizza, Shirt, Wrench, Scissors, Car, Palette, Hammer, Home as HomeIcon, Smartphone, MoreHorizontal, X, Sparkles } from 'lucide-react';
+import { Bell, MapPin, Store, Leaf, Pizza, Shirt, Wrench, Scissors, Car, Palette, Hammer, Home as HomeIcon, Smartphone, MoreHorizontal, X, Sparkles, Download, Layers } from 'lucide-react';
 import { CATEGORIES } from '../data/mockData';
 import { Link } from 'react-router-dom';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { useFirebase } from '../components/FirebaseProvider';
+import { NotificationsPopover, NotificationItem } from '../components/NotificationsPopover';
 
 const IconMap: Record<string, any> = {
   Leaf, Pizza, Shirt, Wrench, Scissors, Car, Palette, Hammer, HomeIcon, Smartphone, MoreHorizontal
@@ -43,6 +44,17 @@ export default function Home() {
     } catch {}
   };
 
+  const [customerNotifications, setCustomerNotifications] = useState<NotificationItem[]>([
+    { id: '1', type: 'success', title: 'Payment Successful', message: 'Your payment of E 250.00 for Fresh Cabbages was processed.', time: '2m ago', read: false },
+    { id: '2', type: 'info', title: 'Receipt Ready', message: 'Your receipt for Order #4092 is ready for download.', time: '5m ago', read: false },
+    { id: '3', type: 'pending', title: 'Payment Pending', message: 'Waiting for Mobile Money confirmation for E 120.00.', time: '1h ago', read: true },
+    { id: '4', type: 'error', title: 'Payment Failed', message: 'Insufficient funds on your MTN MoMo account.', time: '1d ago', read: true },
+  ]);
+
+  const markCustomerNotificationsRead = () => {
+    setCustomerNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
   // Load advertiser campaigns from localStorage
   const customBanners = banners;
   const [featuredProductIds] = useState<string[]>(() => {
@@ -76,12 +88,25 @@ export default function Home() {
     return true;
   });
 
-  // Sort logic prioritises active Seller promotions (Featured or Sponsored) to the top of the Feed
+  // Sort logic prioritises active promotions and premium/business merchant tiers (Priority search placement)
   const sortedAndFilteredProducts = [...filteredProducts].sort((a, b) => {
     const aPromo = featuredProductIds.includes(a.id) || sponsoredProductIds.includes(a.id);
     const bPromo = featuredProductIds.includes(b.id) || sponsoredProductIds.includes(b.id);
     if (aPromo && !bPromo) return -1;
     if (!aPromo && bPromo) return 1;
+
+    // Rank based on merchant tier verification levels (Priority search placement)
+    const aSeller = SELLERS[a.sellerId];
+    const bSeller = SELLERS[b.sellerId];
+    const aLevel = aSeller?.verificationLevel || 'basic';
+    const bLevel = bSeller?.verificationLevel || 'basic';
+
+    if (aLevel === 'premium' && bLevel !== 'premium') return -1;
+    if (aLevel !== 'premium' && bLevel === 'premium') return 1;
+
+    if (aLevel === 'verified' && bLevel === 'basic') return -1;
+    if (aLevel === 'basic' && bLevel === 'verified') return 1;
+
     return 0;
   });
 
@@ -129,9 +154,27 @@ export default function Home() {
               </div>
             </div>
             
-            <button className="bg-white/10 hover:bg-white/15 p-2.5 rounded-full relative active:scale-95 transition-transform flex items-center justify-center">
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full border-2 border-emerald-600"></span>
+            <div className="bg-white/10 hover:bg-white/15 p-1 rounded-full relative transition-transform flex items-center justify-center">
+              <NotificationsPopover 
+                notifications={customerNotifications} 
+                onMarkAllAsRead={markCustomerNotificationsRead} 
+                triggerColor="text-white"
+                dotColor="bg-amber-500"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar whitespace-nowrap flex-nowrap py-0.5">
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('emakethe_open_portal_switcher'))}
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] font-bold text-white transition-all active:scale-95 shrink-0"
+            >
+              <Layers size={12} /> Portal
+            </button>
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('emakethe_trigger_download'))}
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] font-bold text-white transition-all active:scale-95 shrink-0"
+            >
+              <Download size={12} /> Download
             </button>
           </div>
           <Link to="/search" className="bg-white rounded-2xl flex items-center px-4 py-3 shadow-inner border border-gray-100 text-gray-550 hover:text-gray-700 transition-colors">
@@ -507,7 +550,10 @@ export default function Home() {
           )}
         </div>
       </div>
-      <div className="px-4 mb-20 text-center">
+      <div className="px-4 mb-20 text-center flex flex-col gap-2">
+        <Link to="/advertise" className="text-[10px] text-indigo-500 font-bold hover:underline">
+          Advertise your Business
+        </Link>
         <Link to="/admin" className="text-[10px] text-gray-400 font-medium pb-4 hover:underline">
           Admin Portal Login
         </Link>

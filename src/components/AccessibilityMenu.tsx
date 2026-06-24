@@ -25,6 +25,19 @@ export default function AccessibilityMenu({
     };
   }, []);
 
+  useEffect(() => {
+    const handleTrigger = () => {
+      setIsOpen(true);
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+      } else {
+        setShowInstallGuide(true);
+      }
+    };
+    window.addEventListener('emakethe_trigger_download', handleTrigger);
+    return () => window.removeEventListener('emakethe_trigger_download', handleTrigger);
+  }, [deferredPrompt]);
+
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();

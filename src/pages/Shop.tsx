@@ -10,6 +10,74 @@ export default function Shop() {
   const seller = SELLERS_LIST.find(s => s.id === id);
   const SELLERS = SELLERS_LIST.reduce((acc, s) => ({...acc, [s.id]: s}), {} as Record<string, any>);
 
+  const getThemeClasses = () => {
+    if (!seller) {
+      return {
+        primaryBg: 'bg-green-600 hover:bg-green-700',
+        textAccent: 'text-green-600',
+        lightBg: 'bg-green-50',
+        borderAccent: 'border-green-150',
+        badgeBg: 'bg-green-100 text-green-800 border-green-200',
+        buttonPrimary: 'bg-green-600 hover:bg-green-700 text-white',
+        buttonSecondary: 'bg-green-50 text-green-700 border-green-150 hover:bg-green-100/50'
+      };
+    }
+    const theme = seller.themeColor || 'emerald';
+    switch (theme) {
+      case 'blue':
+        return {
+          primaryBg: 'bg-blue-600 hover:bg-blue-700',
+          textAccent: 'text-blue-600',
+          lightBg: 'bg-blue-50',
+          borderAccent: 'border-blue-150',
+          badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
+          buttonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white',
+          buttonSecondary: 'bg-blue-50 text-blue-700 border-blue-150 hover:bg-blue-100/50'
+        };
+      case 'pink':
+        return {
+          primaryBg: 'bg-pink-600 hover:bg-pink-700',
+          textAccent: 'text-pink-600',
+          lightBg: 'bg-pink-50',
+          borderAccent: 'border-pink-150',
+          badgeBg: 'bg-pink-100 text-pink-800 border-pink-200',
+          buttonPrimary: 'bg-pink-600 hover:bg-pink-700 text-white',
+          buttonSecondary: 'bg-pink-50 text-pink-700 border-pink-150 hover:bg-pink-100/50'
+        };
+      case 'amber':
+        return {
+          primaryBg: 'bg-amber-600 hover:bg-amber-700',
+          textAccent: 'text-amber-600',
+          lightBg: 'bg-amber-50',
+          borderAccent: 'border-amber-150',
+          badgeBg: 'bg-amber-100 text-amber-800 border-amber-200',
+          buttonPrimary: 'bg-amber-600 hover:bg-amber-700 text-white',
+          buttonSecondary: 'bg-amber-50 text-amber-700 border-amber-150 hover:bg-amber-100/50'
+        };
+      case 'slate':
+        return {
+          primaryBg: 'bg-slate-800 hover:bg-slate-900',
+          textAccent: 'text-slate-800',
+          lightBg: 'bg-slate-100',
+          borderAccent: 'border-slate-200',
+          badgeBg: 'bg-slate-200 text-slate-800 border-slate-300',
+          buttonPrimary: 'bg-slate-800 hover:bg-slate-900 text-white',
+          buttonSecondary: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200/50'
+        };
+      default: // emerald
+        return {
+          primaryBg: 'bg-green-600 hover:bg-green-700',
+          textAccent: 'text-green-600',
+          lightBg: 'bg-green-50',
+          borderAccent: 'border-green-150',
+          badgeBg: 'bg-green-100 text-green-800 border-green-200',
+          buttonPrimary: 'bg-green-600 hover:bg-green-700 text-white',
+          buttonSecondary: 'bg-green-50 text-green-700 border-green-150 hover:bg-green-100/50'
+        };
+    }
+  };
+  const themeClasses = getThemeClasses();
+
   // --- LOCAL PERSISTENCE SOCIAL ENGINE ---
   const [isFavorite, setIsFavorite] = useState(() => {
     try {
@@ -314,23 +382,39 @@ export default function Shop() {
         </div>
       </div>
 
+      {seller.announcement && (
+        <div className="px-4 mb-4">
+           <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse ${
+             seller.verificationLevel === 'premium' 
+               ? 'bg-amber-50/70 border-amber-200 text-amber-900' 
+               : 'bg-blue-50/70 border-blue-200 text-blue-900'
+           }`}>
+              <Sparkles size={16} className={seller.verificationLevel === 'premium' ? 'text-amber-500 shrink-0' : 'text-blue-500 shrink-0'} />
+              <div className="text-xs font-bold font-sans">
+                 <span className="uppercase text-[9px] tracking-wider block opacity-75 font-mono">Store Announcement</span>
+                 {seller.announcement}
+              </div>
+           </div>
+        </div>
+      )}
+
       <div className="px-4 pb-8 w-full">
         <div className="flex bg-white rounded-lg p-1 mb-4 border border-gray-100 shadow-sm relative">
           <button 
             onClick={() => setActiveTab('products')} 
-            className={`flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 ${activeTab === 'products' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 ${activeTab === 'products' ? `${themeClasses.primaryBg} text-white shadow-sm` : 'text-gray-500 hover:bg-gray-50'}`}
           >
             Products
           </button>
           <button 
             onClick={() => setActiveTab('about')}
-            className={`flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 ${activeTab === 'about' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 ${activeTab === 'about' ? `${themeClasses.primaryBg} text-white shadow-sm` : 'text-gray-500 hover:bg-gray-50'}`}
           >
             About
           </button>
           <button 
             onClick={() => setActiveTab('reviews')}
-            className={`flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 ${activeTab === 'reviews' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 ${activeTab === 'reviews' ? `${themeClasses.primaryBg} text-white shadow-sm` : 'text-gray-500 hover:bg-gray-50'}`}
           >
             Reviews
           </button>
@@ -345,7 +429,7 @@ export default function Shop() {
                 </div>
                 <div className="p-3">
                   <h3 className="font-semibold text-gray-800 text-sm line-clamp-1">{product.name}</h3>
-                  <span className="font-bold text-green-600 mt-1 block">{product.currency}{product.price} <span className="text-xs font-normal text-gray-500">{product.unit}</span></span>
+                  <span className={`font-bold mt-1 block ${themeClasses.textAccent}`}>{product.currency}{product.price} <span className="text-xs font-normal text-gray-500">{product.unit}</span></span>
                 </div>
               </Link>
             ))}
@@ -407,6 +491,30 @@ export default function Shop() {
                         <p className="text-sm font-semibold text-gray-800">Mobile Money (MTN/eMali), Cash on Delivery</p>
                      </div>
                    </div>
+
+                    {seller.facebook && (
+                       <div className="flex items-start gap-3 border-t border-gray-100 pt-2.5">
+                         <div className="w-8 h-8 rounded-full bg-blue-50/70 flex items-center justify-center text-blue-600 shrink-0">
+                           <span className="text-xs font-black font-sans">f</span>
+                         </div>
+                         <div>
+                            <p className="text-xs text-gray-500">Facebook Page</p>
+                            <a href={`https://facebook.com/${seller.facebook}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-750 hover:underline">{seller.facebook}</a>
+                         </div>
+                       </div>
+                    )}
+
+                    {seller.instagram && (
+                       <div className="flex items-start gap-3 border-t border-gray-100 pt-2.5">
+                         <div className="w-8 h-8 rounded-full bg-pink-50/70 flex items-center justify-center text-pink-600 shrink-0">
+                           <span className="text-xs font-black font-sans">📸</span>
+                         </div>
+                         <div>
+                            <p className="text-xs text-gray-500">Instagram Handle</p>
+                            <a href={`https://instagram.com/${seller.instagram}`} target="_blank" rel="noreferrer" className="text-sm font-semibold text-pink-750 hover:underline">@{seller.instagram}</a>
+                         </div>
+                       </div>
+                    )}
                 </div>
              </div>
           </div>
