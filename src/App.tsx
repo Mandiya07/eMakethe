@@ -2,6 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+// Trigger redeployment
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import { FirebaseProvider } from './components/FirebaseProvider';
