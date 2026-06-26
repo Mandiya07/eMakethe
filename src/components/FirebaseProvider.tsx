@@ -30,10 +30,10 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const checkAndCleanDemoData = async () => {
       try {
         const isClient = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
-        if (isClient && !localStorage.getItem('emakethe_fully_purged_v15_force_refresh')) {
+        if (isClient && !localStorage.getItem('emakethe_fully_purged_v17_force_refresh')) {
           console.log('System purge triggered: clearing local storage and all Firestore collections...');
           localStorage.clear();
-          localStorage.setItem('emakethe_fully_purged_v15_force_refresh', 'true');
+          localStorage.setItem('emakethe_fully_purged_v17_force_refresh', 'true');
           localStorage.setItem('emakethe_wallet_balance', '0.00');
           
           // Complete clean sweep: delete all dynamic or seeded documents in active collections
@@ -73,6 +73,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      console.log('Firebase products snapshot size:', snapshot.size);
       setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'products');
