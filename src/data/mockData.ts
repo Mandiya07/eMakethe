@@ -101,31 +101,13 @@ const BASE_SELLERS: Record<string, Seller> = {};
 const isClient = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
 
 const getInitialSellers = (): Record<string, Seller> => {
-  if (!isClient) return BASE_SELLERS;
-  const stored = localStorage.getItem('emakethe_sellers');
-  if (stored) {
-    try {
-      return { ...BASE_SELLERS, ...JSON.parse(stored) };
-    } catch {
-      return BASE_SELLERS;
-    }
-  }
   return BASE_SELLERS;
 };
 
 export const SELLERS: Record<string, Seller> = getInitialSellers();
 
 export const addSellerToStorage = (s: Seller) => {
-  SELLERS[s.id] = s;
-  if (isClient) {
-    try {
-      const customSellers = JSON.parse(localStorage.getItem('emakethe_sellers') || '{}');
-      customSellers[s.id] = s;
-      localStorage.setItem('emakethe_sellers', JSON.stringify(customSellers));
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // Deprecated - moved to firebase
 };
 
 export type Product = {
@@ -145,57 +127,19 @@ export type Product = {
 };
 
 const getInitialProducts = (): Product[] => {
-  if (!isClient) return [];
-  const stored = localStorage.getItem('emakethe_products');
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return [];
-    }
-  }
   return [];
 };
 
 export const PRODUCTS: Product[] = getInitialProducts();
 
 export const addProductToStorage = (p: Product) => {
-  PRODUCTS.push(p);
-  if (isClient) {
-    try {
-      localStorage.setItem('emakethe_products', JSON.stringify(PRODUCTS));
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // Deprecated - moved to firebase
 };
 
 export const updateProductInStorage = (p: Product) => {
-  const index = PRODUCTS.findIndex(existing => existing.id === p.id);
-  if (index !== -1) {
-    PRODUCTS[index] = p;
-  } else {
-    PRODUCTS.push(p);
-  }
-  if (isClient) {
-    try {
-      localStorage.setItem('emakethe_products', JSON.stringify(PRODUCTS));
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // Deprecated - moved to firebase
 };
 
 export const deleteProductFromStorage = (id: string) => {
-  const index = PRODUCTS.findIndex(existing => existing.id === id);
-  if (index !== -1) {
-    PRODUCTS.splice(index, 1);
-  }
-  if (isClient) {
-    try {
-      localStorage.setItem('emakethe_products', JSON.stringify(PRODUCTS));
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // Deprecated - moved to firebase
 };

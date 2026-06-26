@@ -1,7 +1,7 @@
-import { Users, Store, ShieldAlert, BarChart3, Tag, DollarSign, Search, CheckCircle2, XCircle, Coins, Megaphone, Truck, Sparkles, Award, Lock, Eye, EyeOff, ShieldCheck, UserCheck, Briefcase } from 'lucide-react';
+import { Users, Store, ShieldAlert, BarChart3, Tag, DollarSign, Search, CheckCircle2, XCircle, Coins, Megaphone, Truck, Sparkles, Award, Lock, Eye, EyeOff, ShieldCheck, UserCheck, Briefcase, Smartphone, Landmark, Save } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, getDocs, updateDoc } from 'firebase/firestore';
 import { NotificationsPopover, NotificationItem } from '../components/NotificationsPopover';
 
 export default function AdminDashboard() {
@@ -65,7 +65,127 @@ export default function AdminDashboard() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'disputes' | 'revenue'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'disputes' | 'revenue' | 'payments'>('overview');
+
+  // Admin Payout / Billing Config States
+  const [momoName, setMomoName] = useState('MaketiConnect Admin');
+  const [momoNumber, setMomoNumber] = useState('+268 7611 2233');
+  const [momoOperator, setMomoOperator] = useState('MTN MoMo');
+  const [bankName, setBankName] = useState('Standard Bank Eswatini');
+  const [bankAccountName, setBankAccountName] = useState('MaketiConnect (PTY) LTD');
+  const [bankAccountNumber, setBankAccountNumber] = useState('910234451092');
+  const [bankBranchCode, setBankBranchCode] = useState('663108');
+  const [bankType, setBankType] = useState('Corporate Trust Escrow');
+  const [instructions, setInstructions] = useState('Please use your registered Shop Name or Phone Number as payment reference and upload confirmation.');
+  const [isSavingPayments, setIsSavingPayments] = useState(false);
+  const [savePaymentsSuccess, setSavePaymentsSuccess] = useState(false);
+
+  // Load existing payment config from Firestore
+  useEffect(() => {
+    const fetchPaymentConfig = async () => {
+      try {
+        const docRef = doc(db, 'admins', 'payment_settings');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.momoName) setMomoName(data.momoName);
+          if (data.momoNumber) setMomoNumber(data.momoNumber);
+          if (data.momoOperator) setMomoOperator(data.momoOperator);
+          if (data.bankName) setBankName(data.bankName);
+          if (data.bankAccountName) setBankAccountName(data.bankAccountName);
+          if (data.bankAccountNumber) setBankAccountNumber(data.bankAccountNumber);
+          if (data.bankBranchCode) setBankBranchCode(data.bankBranchCode);
+          if (data.bankType) setBankType(data.bankType);
+          if (data.instructions) setInstructions(data.instructions);
+        }
+      } catch (err) {
+        console.warn('Could not fetch existing admin payment configurations:', err);
+      }
+    };
+
+    if (adminId) {
+      fetchPaymentConfig();
+    }
+  }, [adminId]);
+
+  const [escrowOrders, setEscrowOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('activeEscrows');
+      if (stored) {
+        setEscrowOrders(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }, []);
+
+  const handleResolveEscrow = (id: string, newStatus: 'Paid' | 'Refunded') => {
+    const updated = escrowOrders.map(esc => esc.id === id ? { ...esc, status: newStatus, description: `Resolved by Platform Administrator: ${newStatus === 'Paid' ? 'Paid to Seller' : 'Refunded to Buyer'}` } : esc);
+    localStorage.setItem('activeEscrows', JSON.stringify(updated));
+    setEscrowOrders(updated);
+    alert(`Yebo! Escrow order ${id} resolved as ${newStatus === 'Paid' ? 'Paid Out' : 'Refunded'}.`);
+  };
+
+  const [allSellers, setAllSellers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchSellers = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'sellers'));
+        const list = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAllSellers(list);
+      } catch (e) {
+        console.warn('Could not load sellers for admin dashboard:', e);
+      }
+    };
+    if (adminId) {
+      fetchSellers();
+    }
+  }, [adminId]);
+
+  const handleUpdateVerification = async (sellerId: string, level: 'verified' | 'premium' | 'basic') => {
+    try {
+      await updateDoc(doc(db, 'sellers', sellerId), { verificationLevel: level });
+      setAllSellers(prev => prev.map(s => s.id === sellerId ? { ...s, verificationLevel: level } : s));
+      alert(`Success! Updated verification tier for seller to ${level.toUpperCase()}.`);
+    } catch (err) {
+      console.error(err);
+      alert('Error updating seller verification in database.');
+    }
+  };
+
+  const handleSavePaymentConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingPayments(true);
+    setSavePaymentsSuccess(false);
+
+    const paymentConfig = {
+      momoName,
+      momoNumber,
+      momoOperator,
+      bankName,
+      bankAccountName,
+      bankAccountNumber,
+      bankBranchCode,
+      bankType,
+      instructions,
+      updatedAt: new Date().toISOString(),
+      updatedBy: adminName || 'System Supervisor'
+    };
+
+    try {
+      await setDoc(doc(db, 'admins', 'payment_settings'), paymentConfig);
+      setSavePaymentsSuccess(true);
+      setTimeout(() => setSavePaymentsSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save admin payment config:', err);
+      alert('Error: Failed to save administrative payment settings. Please check database permissions.');
+    } finally {
+      setIsSavingPayments(false);
+    }
+  };
 
   // Revenue settings representing the Platform's core Revenue Model
   const [commissionRate, setCommissionRate] = useState(5.0); // 1. Commission Model: Percentage per transaction
@@ -139,11 +259,11 @@ export default function AdminDashboard() {
             </p>
             <button
               type="button"
-              onClick={() => handleApplyAdminPreset('Sipho M. Yati', 'EMP-2026-X8', 'EMAKETHE_SVD_2026')}
+              onClick={() => handleApplyAdminPreset('Admin User', 'EMP-2026-X8', 'EMAKETHE_SVD_2026')}
               className="w-full bg-slate-700 hover:bg-slate-600 text-white rounded-xl p-2.5 text-xs font-bold text-left flex justify-between items-center transition-all cursor-pointer"
             >
               <div>
-                <p className="text-slate-200 font-extrabold">Sipho M. Yati (System Supervisor)</p>
+                <p className="text-slate-200 font-extrabold">John M. Yati (System Supervisor)</p>
                 <p className="text-[9.5px] text-slate-400 font-mono mt-0.5">Emp ID: EMP-2026-X8 • Key: EMAKETHE_SVD_2026</p>
               </div>
               <UserCheck size={14} className="text-emerald-400" />
@@ -244,7 +364,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="px-4 py-3 bg-white mb-4 shadow-sm border-b border-gray-100 flex md:grid md:grid-cols-4 gap-2.5 overflow-x-auto md:overflow-visible no-scrollbar w-full">
+      <div className="px-4 py-3 bg-white mb-4 shadow-sm border-b border-gray-100 flex md:grid md:grid-cols-5 gap-2.5 overflow-x-auto md:overflow-visible no-scrollbar w-full">
         <button 
           onClick={() => setActiveTab('revenue')}
           className={`min-w-[140px] md:min-w-0 md:w-full flex flex-row md:flex-col items-center justify-center text-center gap-1.5 md:gap-1 py-2.5 px-3 md:py-3.5 md:px-1 rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-xs font-black tracking-wider whitespace-nowrap md:whitespace-normal transition-all shadow-sm shrink-0 hover:scale-[1.01] ${activeTab === 'revenue' ? 'bg-slate-800 text-white shadow-slate-800/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200/50'}`}
@@ -278,6 +398,13 @@ export default function AdminDashboard() {
             <span>Disputes</span>
             <span className="bg-orange-500 text-white text-[9px] md:text-[10px] px-1.5 py-0.5 rounded-full font-black shrink-0">1</span>
           </span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('payments')}
+          className={`min-w-[130px] md:min-w-0 md:w-full flex flex-row md:flex-col items-center justify-center text-center gap-1.5 md:gap-1 py-2.5 px-3 md:py-3.5 md:px-1 rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-xs font-black tracking-wider whitespace-nowrap md:whitespace-normal transition-all shadow-sm shrink-0 hover:scale-[1.01] ${activeTab === 'payments' ? 'bg-slate-800 text-white shadow-slate-800/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200/50'}`}
+        >
+          <Landmark className={`w-3.5 h-3.5 md:w-5 md:h-5 shrink-0 ${activeTab === 'payments' ? "text-emerald-400" : "text-gray-500"}`} />
+          <span>Billing Config</span>
         </button>
       </div>
 
@@ -813,36 +940,149 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'verifications' && (
-          <div className="flex flex-col gap-3">
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-               <div className="flex gap-3 mb-3">
-                 <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
-                 <div>
-                   <h3 className="font-bold text-gray-800 text-sm">Zinle's Fashion Boutique</h3>
-                   <p className="text-[10px] text-gray-500">Requested Premium Verification</p>
-                 </div>
-               </div>
-               <div className="bg-gray-50 p-2 rounded-lg mb-3">
-                 <p className="text-xs font-bold text-gray-700 mb-1">Documents Provided:</p>
-                 <u className="text-[10px] text-blue-600 flex flex-col gap-1">
-                   <li>National ID Front & Back</li>
-                   <li>Market Stall Permit</li>
-                 </u>
-               </div>
-               <div className="flex gap-2">
-                 <button className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1">
-                   <CheckCircle2 size={14} /> Approve
-                 </button>
-                 <button className="flex-1 bg-red-100 text-red-600 text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1">
-                   <XCircle size={14} /> Reject
-                 </button>
-               </div>
+          <div className="flex flex-col gap-4">
+            <div className="bg-slate-800 p-4 rounded-3xl text-white shadow-sm border border-slate-700">
+              <h3 className="text-sm font-black tracking-wide uppercase mb-1">Verify Local Traders</h3>
+              <p className="text-[10px] text-slate-300">Upgrade active local businesses to Verified status or Premium Tier to boost their discovery visibility and unlock marketplace trust.</p>
             </div>
+
+            {allSellers.length === 0 ? (
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
+                <p className="text-sm text-gray-500 font-medium">No registered sellers found in database.</p>
+              </div>
+            ) : (
+              allSellers.map(seller => (
+                <div key={seller.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-150 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex gap-3 items-center">
+                    <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-xl shrink-0">
+                      {seller.logoUrl && seller.logoUrl.length <= 2 ? seller.logoUrl : '🏪'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-gray-800 text-sm">{seller.name}</h4>
+                        <span className={`text-[8.5px] font-black px-1.5 py-0.5 rounded uppercase ${
+                          seller.verificationLevel === 'premium' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                          seller.verificationLevel === 'verified' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {seller.verificationLevel || 'basic'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 font-medium mt-0.5">{seller.category} • {seller.location} • {seller.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 w-full md:w-auto self-stretch md:self-auto shrink-0">
+                    <button 
+                      onClick={() => handleUpdateVerification(seller.id, 'verified')}
+                      disabled={seller.verificationLevel === 'verified'}
+                      className={`flex-1 md:flex-none text-[11px] font-black py-2 px-3.5 rounded-xl flex items-center justify-center gap-1 transition-all ${
+                        seller.verificationLevel === 'verified'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                      }`}
+                    >
+                      <CheckCircle2 size={13} /> Verify
+                    </button>
+                    <button 
+                      onClick={() => handleUpdateVerification(seller.id, 'premium')}
+                      disabled={seller.verificationLevel === 'premium'}
+                      className={`flex-1 md:flex-none text-[11px] font-black py-2 px-3.5 rounded-xl flex items-center justify-center gap-1 transition-all ${
+                        seller.verificationLevel === 'premium'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-amber-500 hover:bg-amber-600 text-white shadow-xs'
+                      }`}
+                    >
+                      <Award size={13} /> Premium
+                    </button>
+                    {(seller.verificationLevel === 'premium' || seller.verificationLevel === 'verified') && (
+                      <button 
+                        onClick={() => handleUpdateVerification(seller.id, 'basic')}
+                        className="text-[11px] font-black py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl"
+                        title="Demote to Basic"
+                      >
+                        Demote
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
         {activeTab === 'disputes' && (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
+            {/* Header banner */}
+            <div className="bg-gradient-to-tr from-slate-900 to-slate-850 text-white p-5 rounded-3xl border border-slate-700 shadow-sm">
+               <div className="flex items-center gap-2 mb-1.5 text-blue-400">
+                  <Lock size={14} className="stroke-[2.5]" />
+                  <span className="text-[9px] font-black uppercase tracking-widest font-mono">Platform Escrow Supervision</span>
+               </div>
+               <h4 className="font-display font-black text-sm uppercase tracking-tight">Active Escrows & Disputes</h4>
+               <p className="text-[10px] text-slate-300 leading-relaxed mt-0.5">
+                  Oversee buyer deposits, carrier delivery logs, and release/refund overrides.
+               </p>
+            </div>
+
+            {/* Real Dynamic Escrows list */}
+            {escrowOrders.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <h3 className="font-black text-xs uppercase tracking-wider text-slate-500 px-1">🔒 Live Escrow Transactions ({escrowOrders.length})</h3>
+                {escrowOrders.map((esc) => (
+                  <div key={esc.id} className="bg-white p-4 rounded-3xl border border-slate-150 shadow-sm flex flex-col gap-3">
+                     <div className="flex justify-between items-start">
+                        <div>
+                           <p className="font-black text-xs text-slate-800 leading-snug">{esc.item}</p>
+                           <p className="text-[9.5px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Recipient: {esc.recipient}</p>
+                        </div>
+                        <div className="text-right">
+                           <span className="text-xs font-black text-blue-600 font-mono block">E {esc.amount?.toFixed(2)}</span>
+                           <span className={`text-[8px] font-black tracking-widest px-2 py-0.5 rounded uppercase mt-1 inline-block ${
+                             esc.status === 'Locked' ? 'bg-amber-100 text-amber-800' :
+                             esc.status === 'Delivered' ? 'bg-indigo-100 text-indigo-800' :
+                             esc.status === 'Paid' ? 'bg-green-100 text-green-800' :
+                             'bg-red-100 text-red-800'
+                           }`}>
+                             {esc.status}
+                           </span>
+                        </div>
+                     </div>
+                     
+                     <p className="text-[10px] text-gray-400 leading-none pb-2 border-b border-gray-100">
+                       ℹ️ ID: <span className="font-mono text-blue-600 font-bold">{esc.id}</span> · Phone: <span className="font-mono">{esc.buyerPhone}</span> · Method: {esc.provider}
+                     </p>
+
+                     <p className="text-[10px] text-gray-500 leading-relaxed">
+                       <strong>Logistics status:</strong> {esc.description || 'Awaiting rider assignment'}
+                     </p>
+
+                     {esc.status !== 'Paid' && esc.status !== 'Refunded' ? (
+                       <div className="grid grid-cols-2 gap-2 mt-1">
+                          <button 
+                            onClick={() => handleResolveEscrow(esc.id, 'Paid')}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black py-2.5 rounded-xl uppercase tracking-wider transition-all"
+                          >
+                             Release to Seller
+                          </button>
+                          <button 
+                            onClick={() => handleResolveEscrow(esc.id, 'Refunded')}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-black py-2.5 rounded-xl uppercase tracking-wider border border-rose-100 transition-all"
+                          >
+                             Refund Buyer
+                          </button>
+                       </div>
+                     ) : (
+                       <div className="bg-slate-50 text-slate-500 rounded-xl p-2.5 text-center text-[9.5px] font-black uppercase tracking-wider border border-slate-150">
+                         ✓ Closed: {esc.status === 'Paid' ? 'Paid out directly to seller' : 'Reversed back to buyer wallet'}
+                       </div>
+                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <h3 className="font-black text-xs uppercase tracking-wider text-slate-500 px-1">⚠️ Active Disputes (Template Examples)</h3>
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                <div className="flex justify-between items-center mb-2">
                  <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded">Active Dispute</span>
@@ -857,18 +1097,280 @@ export default function AdminDashboard() {
                     <p className="font-bold text-red-600 text-sm">E 350.00</p>
                  </div>
                  <div className="flex-1 flex justify-center gap-2">
-                    <button className="text-[10px] bg-slate-800 text-white px-2 py-1 rounded">View Chat</button>
+                    <button className="text-[10px] bg-slate-800 text-white px-2.5 py-1 rounded">View Chat</button>
                  </div>
                </div>
 
                <div className="flex gap-2">
-                 <button className="flex-1 bg-slate-800 text-white text-xs font-bold py-2 rounded-lg">
+                 <button onClick={() => alert('Dispute resolved: E 350.00 refunded to Themba')} className="flex-1 bg-slate-800 text-white text-xs font-bold py-2 rounded-lg">
                    Resolve (Refund Buyer)
                  </button>
-                 <button className="flex-1 border border-slate-300 text-slate-700 text-xs font-bold py-2 rounded-lg">
+                 <button onClick={() => alert('Dispute resolved: E 350.00 released to Gugu')} className="flex-1 border border-slate-300 text-slate-700 text-xs font-bold py-2 rounded-lg">
                    Resolve (Pay Seller)
                  </button>
                </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'payments' && (
+          <div className="flex flex-col lg:grid lg:grid-cols-12 gap-5 font-sans">
+            {/* Left side: Config Form */}
+            <form onSubmit={handleSavePaymentConfig} className="lg:col-span-7 flex flex-col gap-5">
+              
+              {/* Header card */}
+              <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                  <Landmark className="text-emerald-500" size={20} />
+                  Administrative Payment Settings
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Configure your official administrator Mobile Money numbers and corporate bank details. Sellers and buyers use these settings to pay for membership tiers, sponsored banners, and secure escrow deposits.
+                </p>
+              </div>
+
+              {/* Mobile Money configuration section */}
+              <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                  <div className="p-1.5 bg-yellow-50 text-yellow-600 rounded-lg shrink-0">
+                    <Smartphone size={16} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-gray-800 uppercase tracking-wider font-mono">1. Mobile Money (MoMo) Account</h4>
+                    <p className="text-[10px] text-gray-500 font-medium">Configure MTN MoMo or Airtel Money details for receiving payments</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">MoMo Provider/Operator:</label>
+                    <input 
+                      type="text"
+                      value={momoOperator}
+                      onChange={(e) => setMomoOperator(e.target.value)}
+                      placeholder="e.g. MTN MoMo"
+                      className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">MoMo Phone Number:</label>
+                    <input 
+                      type="text"
+                      value={momoNumber}
+                      onChange={(e) => setMomoNumber(e.target.value)}
+                      placeholder="e.g. +268 7611 2233"
+                      className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none font-mono"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Account Holder Name (Recipient Name):</label>
+                  <input 
+                    type="text"
+                    value={momoName}
+                    onChange={(e) => setMomoName(e.target.value)}
+                    placeholder="e.g. MaketiConnect Admin"
+                    className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Bank Account configuration section */}
+              <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                  <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
+                    <Landmark size={16} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-gray-800 uppercase tracking-wider font-mono">2. Corporate Bank Account Details</h4>
+                    <p className="text-[10px] text-gray-500 font-medium">Standard EFT destination for larger business invoice clearing</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Bank Name:</label>
+                    <input 
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="e.g. Standard Bank Eswatini"
+                      className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Account Holder Name:</label>
+                    <input 
+                      type="text"
+                      value={bankAccountName}
+                      onChange={(e) => setBankAccountName(e.target.value)}
+                      placeholder="e.g. MaketiConnect (PTY) LTD"
+                      className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 flex flex-col gap-1">
+                    <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Account Number:</label>
+                    <input 
+                      type="text"
+                      value={bankAccountNumber}
+                      onChange={(e) => setBankAccountNumber(e.target.value)}
+                      placeholder="e.g. 910234451092"
+                      className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none font-mono"
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Branch Code:</label>
+                    <input 
+                      type="text"
+                      value={bankBranchCode}
+                      onChange={(e) => setBankBranchCode(e.target.value)}
+                      placeholder="e.g. 663108"
+                      className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none font-mono"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Account Type:</label>
+                  <input 
+                    type="text"
+                    value={bankType}
+                    onChange={(e) => setBankType(e.target.value)}
+                    placeholder="e.g. Corporate Trust Escrow"
+                    className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white focus:border-indigo-500 outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Instructions and submission */}
+              <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Transaction Reference Guidelines & Instructions:</label>
+                  <textarea 
+                    rows={3}
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    placeholder="Explain what reference to use (e.g., Shop Name or phone number) and where to send the payment proof..."
+                    className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white focus:border-indigo-500 outline-none leading-relaxed resize-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                  <span className="text-[10px] text-gray-400 font-medium font-mono">
+                    Last modified by: {adminName || 'System Supervisor'}
+                  </span>
+                  
+                  <button 
+                    type="submit"
+                    disabled={isSavingPayments}
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-black uppercase tracking-wider text-xs px-6 py-3 rounded-xl transition-all shadow-md shadow-indigo-600/15 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isSavingPayments ? (
+                      <>Saving...</>
+                    ) : savePaymentsSuccess ? (
+                      <>
+                        <CheckCircle2 size={14} className="text-emerald-300" />
+                        Saved Successfully!
+                      </>
+                    ) : (
+                      <>
+                        <Save size={14} />
+                        Publish Settings
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* Right side: Interactive Buyer/Seller Preview */}
+            <div className="lg:col-span-5 flex flex-col gap-4">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 font-mono pl-1">
+                Real-Time Checkout Display Preview
+              </span>
+
+              {/* Interactive preview panel mimicking actual Checkout / Wallet screens */}
+              <div className="bg-slate-900 text-white p-5 rounded-[36px] shadow-xl border border-slate-800 flex flex-col gap-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div className="flex justify-between items-center opacity-75 border-b border-slate-800 pb-2.5">
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest font-mono">eMakethe Payment Gateway</span>
+                  <span className="text-[9px] font-bold text-slate-400">DEMO PREVIEW</span>
+                </div>
+
+                {/* Simulated Bank Transfer Display */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">Selected Method: EFT Bank Transfer</span>
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col gap-2.5 text-[11px] leading-relaxed">
+                    <p className="font-bold text-indigo-300 uppercase text-[8.5px] tracking-widest font-mono">eMakethe Administrator Bank Target:</p>
+                    
+                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 font-medium text-slate-300">
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase font-bold block">Receiver Bank</span>
+                        <span className="font-extrabold text-white text-[10.5px]">{bankName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase font-bold block">Account Number</span>
+                        <span className="font-mono font-bold text-white text-[10.5px]">{bankAccountNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase font-bold block">Branch Code</span>
+                        <span className="font-mono text-white text-[10.5px]">{bankBranchCode}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] text-slate-500 uppercase font-bold block">Account Type</span>
+                        <span className="text-white text-[10.5px]">{bankType}</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-800 pt-2 mt-1">
+                      <span className="text-[8px] text-slate-500 uppercase font-bold block">Account Holder Name</span>
+                      <span className="font-bold text-white text-[11px]">{bankAccountName}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Simulated Mobile Money Display */}
+                <div className="flex flex-col gap-2 mt-1">
+                  <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest font-mono">Selected Method: Mobile Money (MoMo)</span>
+                  <div className="bg-yellow-400/5 p-4 rounded-2xl border border-yellow-400/20 flex flex-col gap-1.5 text-[11px] leading-relaxed">
+                    <p className="font-bold text-yellow-400 uppercase text-[8.5px] tracking-widest font-mono">Manual MoMo Admin Destination:</p>
+                    <div className="flex justify-between items-center bg-slate-950/60 px-3 py-2 rounded-xl border border-slate-800">
+                      <div>
+                        <span className="text-[8px] text-slate-400 uppercase font-bold block">Operator & Number</span>
+                        <span className="font-mono font-black text-white text-[11px]">{momoOperator} • {momoNumber}</span>
+                      </div>
+                      <span className="text-[8px] bg-yellow-400 text-slate-950 px-1.5 py-0.5 rounded-full font-mono font-black shrink-0">LIVE</span>
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-[8px] text-slate-500 uppercase font-bold block">Registered Recipient Name</span>
+                      <span className="font-bold text-white text-[10.5px]">{momoName}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instruction area */}
+                <div className="bg-slate-800/40 p-3 rounded-2xl border border-slate-800 text-[10px] text-slate-300 leading-relaxed font-sans">
+                  <div className="flex gap-1 items-start text-indigo-300 font-bold uppercase text-[8.5px] tracking-wider mb-1">
+                    <span>💡</span>
+                    <span>Admin Payout instructions:</span>
+                  </div>
+                  {instructions || 'Please refer to instructions provided above.'}
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -6,6 +6,7 @@ import {
   ChevronRight, Calendar, Landmark, Info, Route, Leaf
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useFirebase } from '../components/FirebaseProvider';
 
 // ----------------------------------------------------
 // Core Types & Initial GPS Coordinates 
@@ -62,114 +63,6 @@ interface NearbyEstablishment {
   }>;
 }
 
-const ESTABLISHMENTS: NearbyEstablishment[] = [
-  // 1. VEGETABLE TRADERS (Sipho's Produce - designed to be exactly 0.5km from Allister Miller Center)
-  {
-    id: 'est-sipho',
-    name: "Sipho's Organic Produce",
-    type: 'trader',
-    lat: -26.3235, 
-    lng: 31.1385,
-    rating: 4.8,
-    reviews: 124,
-    phone: "+268 7612 3456",
-    image: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=300",
-    category: "Vegetables",
-    subCategory: "Agriculture",
-    description: "The premier local stall for organic tomatoes, premium greens, and daily farm fresh crops.",
-    products: [
-      { id: 'p-tomato', name: "Farm Fresh Tomatoes", price: 15, unit: "per kg", desc: "Plump red vine-ripened tomatoes picker this morning." },
-      { id: 'p-spinach', name: "Local Spinach Bundles", price: 10, unit: "bunch", desc: "Rich in iron, crispy, organically pesticide-free." }
-    ]
-  },
-  // 2. VEGETABLE TRADERS (Gogo Sallie - designed to be exactly 1.0km from Center)
-  {
-    id: 'est-sallie',
-    name: "Gogo Sallie's Greens",
-    type: 'trader',
-    lat: -26.3180, 
-    lng: 31.1465,
-    rating: 4.9,
-    reviews: 89,
-    phone: "+268 7654 4321",
-    image: "https://images.unsplash.com/photo-1596422846543-74c6fc0e2811?auto=format&fit=crop&q=80&w=300",
-    category: "Vegetables",
-    subCategory: "Agriculture",
-    description: "Traditional local grandmother-owned stall specializing in tubers, potatoes, and cabbages.",
-    products: [
-      { id: 'p-potato', name: "Sprouted Sweet Potatoes", price: 25, unit: "per bag", desc: "Grown in sweet loam soil, highly nutritious." },
-      { id: 'p-carrot', name: "Fresh Baby Carrots", price: 12, unit: "bundle", desc: "Sweet, crunchy, perfect raw or cooked." }
-    ]
-  },
-  // 3. VEGETABLE TRADERS (Eveni Agri - designed to be exactly 2.0km from Center)
-  {
-    id: 'est-eveni',
-    name: "Eveni Agricultural Coop",
-    type: 'trader',
-    lat: -26.3090, 
-    lng: 31.1510,
-    rating: 4.7,
-    reviews: 54,
-    phone: "+268 7622 9988",
-    image: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&q=80&w=300",
-    category: "Vegetables",
-    subCategory: "Agriculture",
-    description: "Community agricultural coalition bringing top-tier bulk farm goods directly to you.",
-    products: [
-      { id: 'p-cabbage', name: "Premium Green Cabbages", price: 12, unit: "each", desc: "Large solid heads perfect for chakalaka salad." },
-      { id: 'p-butternut', name: "Butternut Squash", price: 18, unit: "each", desc: "Sun-ripened, rich orange meat, sweet and robust." }
-    ]
-  },
-  // 4. PLUMBING SEVICES (Dumisani Spark)
-  {
-    id: 'est-dumisani',
-    name: "Dumisani's Spark Plumbing",
-    type: 'service',
-    lat: -26.3315,
-    lng: 31.1445,
-    rating: 4.6,
-    reviews: 32,
-    phone: "+268 7699 0088",
-    image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&q=80&w=300",
-    category: "Plumbing",
-    subCategory: "Home Services",
-    costEstimate: "E 120 Call-out Fee",
-    description: "Express certified home and commercial plumbing. Unclogging drains, leak repair, and geyser servicing."
-  },
-  // 5. ELECTRICAL SERVICES (Themba Quick Repair)
-  {
-    id: 'est-themba',
-    name: "Themba's Quick Tech & Repairs",
-    type: 'service',
-    lat: -26.3350,
-    lng: 31.1340,
-    rating: 4.8,
-    reviews: 42,
-    phone: "+268 7611 2233",
-    image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=300",
-    category: "Electrician",
-    subCategory: "Technical Services",
-    costEstimate: "E 80 Diagnostic",
-    description: "Domestic wiring repairs, solar cell setups, fridge servicing, and smartphone hardware troubleshooting."
-  },
-  // 6. BEAUTY SERVICES (Precious Salon)
-  {
-    id: 'est-precious',
-    name: "Precious' Hair Braiding & Aesthetics",
-    type: 'service',
-    lat: -26.3140,
-    lng: 31.1310,
-    rating: 4.9,
-    reviews: 110,
-    phone: "+268 7633 4455",
-    image: "https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?auto=format&fit=crop&q=80&w=300",
-    category: "Hair Salon",
-    subCategory: "Beauty & Grooming",
-    costEstimate: "E 150 Styling Starting",
-    description: "Premium braids, custom wigs, lock re-styling, and facial treatments. Safe cozy home studio."
-  }
-];
-
 // Helper: Haversine distance calculator in KM
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth radius in km
@@ -192,6 +85,110 @@ const getSVGCoords = (lat: number, lng: number) => {
 
 export default function NearbyMap() {
   const navigate = useNavigate();
+  const { sellers, products } = useFirebase();
+
+  // Create dynamic establishments by combining live database sellers and baseline high-quality Swazi services
+  const dynamicEstablishments = useMemo(() => {
+    const baseServices: NearbyEstablishment[] = [
+      {
+        id: 'est-dumisani',
+        name: "Dumisani's Spark Plumbing",
+        type: 'service',
+        lat: -26.3315,
+        lng: 31.1445,
+        rating: 4.6,
+        reviews: 32,
+        phone: "+268 7699 0088",
+        image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&q=80&w=300",
+        category: "Plumbing",
+        subCategory: "Home Services",
+        costEstimate: "E 120 Call-out Fee",
+        description: "Express certified home and commercial plumbing. Unclogging drains, leak repair, and geyser servicing."
+      },
+      {
+        id: 'est-themba',
+        name: "Themba's Quick Tech & Repairs",
+        type: 'service',
+        lat: -26.3350,
+        lng: 31.1340,
+        rating: 4.8,
+        reviews: 42,
+        phone: "+268 7611 2233",
+        image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=80&w=300",
+        category: "Electrician",
+        subCategory: "Technical Services",
+        costEstimate: "E 80 Diagnostic",
+        description: "Domestic wiring repairs, solar cell setups, fridge servicing, and smartphone hardware troubleshooting."
+      },
+      {
+        id: 'est-precious',
+        name: "Precious' Hair Braiding & Aesthetics",
+        type: 'service',
+        lat: -26.3140,
+        lng: 31.1310,
+        rating: 4.9,
+        reviews: 110,
+        phone: "+268 7633 4455",
+        image: "https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?auto=format&fit=crop&q=80&w=300",
+        category: "Hair Salon",
+        subCategory: "Beauty & Grooming",
+        costEstimate: "E 150 Styling Starting",
+        description: "Premium braids, custom wigs, lock re-styling, and facial treatments. Safe cozy home studio."
+      }
+    ];
+
+    const tradersFromFirebase = sellers.map((s, idx) => {
+      let lat = -26.3260;
+      let lng = 31.1415;
+      const locLower = (s.location || '').toLowerCase();
+      
+      const seed = s.id.split('').reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
+      const jitterLat = ((seed % 10) - 5) * 0.003;
+      const jitterLng = (((seed + 3) % 10) - 5) * 0.003;
+
+      if (locLower.includes('eveni')) {
+        lat = -26.3420 + jitterLat;
+        lng = 31.1620 + jitterLng;
+      } else if (locLower.includes('sidwashini')) {
+        lat = -26.3310 + jitterLat;
+        lng = 31.1120 + jitterLng;
+      } else if (locLower.includes('westridge')) {
+        lat = -26.3140 + jitterLat;
+        lng = 31.1280 + jitterLng;
+      } else {
+        lat = -26.3260 + jitterLat;
+        lng = 31.1415 + jitterLng;
+      }
+
+      const sellerProducts = products
+        .filter((p: any) => p.sellerId === s.id)
+        .map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          unit: p.unit || 'unit',
+          desc: p.description || ''
+        }));
+
+      return {
+        id: s.id,
+        name: s.name,
+        type: 'trader' as const,
+        lat,
+        lng,
+        rating: s.rating || 5.0,
+        reviews: s.reviews || 0,
+        phone: s.phone || '',
+        image: s.bannerUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=300",
+        category: s.category || "General",
+        subCategory: s.category || "General",
+        description: s.description || "Verified local seller on eMakethe Swaziland.",
+        products: sellerProducts
+      };
+    });
+
+    return [...tradersFromFirebase, ...baseServices];
+  }, [sellers, products]);
 
   // ----------------------------------------------------
   // States
@@ -211,7 +208,7 @@ export default function NearbyMap() {
 
   // Calculate dynamic distances to all establishments relative to the active simulated user location
   const calculatedEstablishments = useMemo(() => {
-    return ESTABLISHMENTS.map(est => {
+    return dynamicEstablishments.map(est => {
       const dist = calculateDistance(userLocation.lat, userLocation.lng, est.lat, est.lng);
       return {
         ...est,
@@ -219,7 +216,7 @@ export default function NearbyMap() {
         distanceStr: dist < 1.0 ? `${(dist * 1000).toFixed(0)}m` : `${dist.toFixed(1)}km`
       };
     });
-  }, [userLocation]);
+  }, [userLocation, dynamicEstablishments]);
 
   // Handle custom manual double-click on map to trigger immediate user GPS relocation
   const handleMapClick = (e: React.MouseEvent<SVGSVGElement>) => {

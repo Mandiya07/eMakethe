@@ -25,6 +25,15 @@ export default function Layout() {
     }
   };
 
+  const [walletBalance, setWalletBalance] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem('emakethe_wallet_balance');
+      return stored ? parseFloat(stored).toFixed(2) : '0.00';
+    } catch {
+      return '0.00';
+    }
+  });
+
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -42,12 +51,25 @@ export default function Layout() {
     };
     window.addEventListener('emakethe_low_data_changed', checkState);
 
+    const updateBalance = () => {
+      try {
+        const stored = localStorage.getItem('emakethe_wallet_balance');
+        setWalletBalance(stored ? parseFloat(stored).toFixed(2) : '0.00');
+      } catch {}
+    };
+    window.addEventListener('storage', updateBalance);
+    window.addEventListener('emakethe_wallet_balance_changed', updateBalance);
+
+    updateBalance();
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('emakethe_low_data_changed', checkState);
+      window.removeEventListener('storage', updateBalance);
+      window.removeEventListener('emakethe_wallet_balance_changed', updateBalance);
     };
-  }, [lowDataMode]);
+  }, [lowDataMode, location.pathname]);
 
   return (
     <div className={`min-h-screen bg-gray-100 flex justify-center items-start ${lowDataMode ? 'low-data-mode' : ''} md:py-6 md:px-4`}>
@@ -86,7 +108,7 @@ export default function Layout() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> SECURE
                 </span>
               </div>
-              <div className="text-lg font-black text-slate-800">E 1,450.00</div>
+              <div className="text-lg font-black text-slate-800">E {walletBalance}</div>
               <div className="text-[9px] text-gray-400 font-medium">Synced with MTN MoMo & SwaziPay</div>
             </div>
             

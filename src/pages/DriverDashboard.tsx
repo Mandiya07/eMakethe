@@ -95,9 +95,27 @@ export default function DriverDashboard() {
   // Interactive Simulator States
   const [isPendingAvailable, setIsPendingAvailable] = useState(true);
   const [hasActiveJob, setHasActiveJob] = useState(false);
-  const [todayEarnings, setTodayEarnings] = useState(145.00);
-  const [deliveryCount, setDeliveryCount] = useState(6);
-  const [hoursSpent, setHoursSpent] = useState(4.5);
+
+  const [todayEarnings, setTodayEarnings] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_driver_earnings');
+      return saved ? parseFloat(saved) : 0.00;
+    } catch { return 0.00; }
+  });
+
+  const [deliveryCount, setDeliveryCount] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_driver_delivery_count');
+      return saved ? parseInt(saved, 10) : 0;
+    } catch { return 0; }
+  });
+
+  const [hoursSpent, setHoursSpent] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_driver_hours_spent');
+      return saved ? parseFloat(saved) : 0.0;
+    } catch { return 0.0; }
+  });
 
   // GPS Simulation and Trust Verification Proof States
   const [navigationStep, setNavigationStep] = useState(0);
@@ -107,10 +125,24 @@ export default function DriverDashboard() {
   const [signedName, setSignedName] = useState('');
   const [verificationFeedback, setVerificationFeedback] = useState<string | null>(null);
 
-  const [recentPayouts, setRecentPayouts] = useState([
-    { id: '#ESCO-910A', time: 'Today, 2:15 PM', amount: 25.00 },
-    { id: '#ESCO-839B', time: 'Today, 11:30 AM', amount: 30.00 }
-  ]);
+  const [recentPayouts, setRecentPayouts] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_driver_payouts');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // Sync driver stats to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('emakethe_driver_earnings', todayEarnings.toFixed(2));
+      localStorage.setItem('emakethe_driver_delivery_count', String(deliveryCount));
+      localStorage.setItem('emakethe_driver_hours_spent', hoursSpent.toFixed(1));
+      localStorage.setItem('emakethe_driver_payouts', JSON.stringify(recentPayouts));
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [todayEarnings, deliveryCount, hoursSpent, recentPayouts]);
 
   const handleAcceptJob = () => {
     setIsPendingAvailable(false);
@@ -420,7 +452,7 @@ export default function DriverDashboard() {
                       <div className="absolute -left-5 top-0.5 w-3 h-3 rounded-full border-2 border-green-500 bg-white"></div>
                       <p className="text-[10px] font-bold text-gray-500 uppercase">Pickup</p>
                       <p className="text-sm font-bold text-gray-800">Mbabane Central Market</p>
-                      <p className="text-xs text-gray-500 line-clamp-1">Sipho's Fresh Produce, Stall 12</p>
+                      <p className="text-xs text-gray-500 line-clamp-1">Store's Fresh Produce, Stall 12</p>
                     </div>
                     
                     <div className="relative">
@@ -805,7 +837,7 @@ export default function DriverDashboard() {
                      <div className="min-w-0 flex-1">
                        <p className="text-[8px] uppercase tracking-wider text-slate-400 font-bold font-mono">Sector Progress</p>
                        <p className="text-[10px] font-black text-slate-800 truncate font-sans">
-                         {navigationStep === 0 && 'At SiphoProduce Produce'}
+                         {navigationStep === 0 && 'At JohnProduce Produce'}
                          {navigationStep === 1 && 'Cruising MR3 Expressway'}
                          {navigationStep === 2 && 'Passing Hospital Lane'}
                          {navigationStep === 3 && 'Arrived Destination'}

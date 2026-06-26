@@ -656,7 +656,7 @@ export default function Feed() {
                               <span className="text-[8px] text-gray-400">1h ago</span>
                             </div>
                             <p className="text-[10px] text-gray-600 leading-normal font-semibold">
-                              Highly recommended harvest quality! Sipho was extremely helpful and payment via MoMo took 10 seconds.
+                              Highly recommended harvest quality! Store was extremely helpful and payment via MoMo took 10 seconds.
                             </p>
                           </div>
                         </div>

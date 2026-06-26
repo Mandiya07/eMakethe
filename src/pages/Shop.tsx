@@ -683,7 +683,7 @@ export default function Shop() {
                       type="text"
                       value={newReviewAuthor}
                       onChange={(e) => setNewReviewAuthor(e.target.value)}
-                      placeholder="e.g. Sipho Dlamini"
+                      placeholder="e.g. Store Dlamini"
                       className="w-full bg-slate-50 border border-gray-200 text-xs font-bold py-3 px-4 rounded-xl outline-none focus:border-indigo-600 text-slate-800"
                     />
                  </div>

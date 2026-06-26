@@ -1,4 +1,5 @@
 import { Settings, Plus, Package, DollarSign, TrendingUp, Bell, MapPin, Truck, CheckCircle2, UserCheck, X, Navigation, Sparkles, MessageSquare, Image as ImageIcon, Megaphone, ShieldAlert, Fingerprint, Lock, Coins, Award, Info, FileText, Store, Phone, ShieldCheck, BarChart3, Palette } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { SELLERS, PRODUCTS, CATEGORIES, addProductToStorage } from '../data/mockData';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,9 +26,9 @@ export default function SellerDashboard() {
     }
   }, [navigate]);
 
-  const seller = firebaseSellers.find(s => s.id === activeSellerId) || firebaseSellers.find(s => s.id === 's1') || {
+  const seller = firebaseSellers.find(s => s.id === activeSellerId) || (activeSellerId ? {
     id: activeSellerId,
-    name: "Sipho's Organic Harvest",
+    name: "My Store",
     location: 'Mbabane Market',
     phone: '+268 7600 0000',
     rating: 5,
@@ -37,9 +38,9 @@ export default function SellerDashboard() {
     bannerUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800',
     logoUrl: 'https://images.unsplash.com/photo-1596422846543-74c6fc0e2811?auto=format&fit=crop&q=80&w=200',
     description: 'Fresh vegetables direct from Eswatini farms.',
-    verificationLevel: 'verified',
+    verificationLevel: 'verified' as const,
     category: 'Agriculture'
-  };
+  } : null);
   
   const [products, setProducts] = useState<any[]>([]);
 
@@ -48,6 +49,18 @@ export default function SellerDashboard() {
       setProducts(firebaseProducts.filter(p => p.sellerId === seller.id));
     }
   }, [firebaseProducts, seller?.id]);
+
+  if (!seller) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-bold text-sm mb-1">Accessing Seller Console...</p>
+          <p className="text-xs text-gray-400">Loading your verified local business profile</p>
+        </div>
+      </div>
+    );
+  }
   
   // Escrow Orders list loaded dynamically
   const [escrowOrders, setEscrowOrders] = useState<any[]>([]);
@@ -82,6 +95,9 @@ export default function SellerDashboard() {
   const [designerAnnouncement, setDesignerAnnouncement] = useState(seller?.announcement || '');
   const [designerFacebook, setDesignerFacebook] = useState(seller?.facebook || '');
   const [designerInstagram, setDesignerInstagram] = useState(seller?.instagram || '');
+  const [designerPaymentPlatform, setDesignerPaymentPlatform] = useState(seller?.preferredPaymentPlatform || 'MTN MoMo');
+  const [designerPayoutNumber, setDesignerPayoutNumber] = useState(seller?.payoutNumber || seller?.phone || '');
+  const [designerPayoutName, setDesignerPayoutName] = useState(seller?.payoutName || seller?.name || '');
 
   useEffect(() => {
     if (seller) {
@@ -94,6 +110,9 @@ export default function SellerDashboard() {
       setDesignerAnnouncement(seller.announcement || '');
       setDesignerFacebook(seller.facebook || '');
       setDesignerInstagram(seller.instagram || '');
+      setDesignerPaymentPlatform(seller.preferredPaymentPlatform || 'MTN MoMo');
+      setDesignerPayoutNumber(seller.payoutNumber || seller.phone || '');
+      setDesignerPayoutName(seller.payoutName || seller.name || '');
       
       const tierMap: Record<string, 'basic' | 'premium' | 'business'> = {
         'basic': 'basic',
@@ -170,7 +189,7 @@ export default function SellerDashboard() {
   const [sponsoredDuration, setSponsoredDuration] = useState<number>(1); // weeks
   
   // Custom Banner fields
-  const [bannerTitle, setBannerTitle] = useState("Sipho's Organic Harvest Special");
+  const [bannerTitle, setBannerTitle] = useState("My Store Special");
   const [bannerHeading, setBannerHeading] = useState("Fresh veggies straight to your door!");
   const [bannerTheme, setBannerTheme] = useState<'emerald' | 'sunset' | 'indigo' | 'midnight'>('emerald');
   const [bannerCoupon, setBannerCoupon] = useState("HARVEST10");
@@ -256,7 +275,7 @@ export default function SellerDashboard() {
       id: 'wa-msg-2',
       type: 'Payment Confirmation',
       icon: '💵',
-      message: 'MaketiConnect Pay: E125.00 released to your digital wallet of Sipho’s Fresh Vegetables for order #910.',
+      message: 'MaketiConnect Pay: E125.00 released to your digital wallet of MyBusiness’s Fresh Vegetables for order #910.',
       time: '3h ago',
       sentStatus: 'Sent'
     },
@@ -285,7 +304,7 @@ export default function SellerDashboard() {
        text = `MaketiConnect Wallet: Your payout of E150.00 is settled in Mobile Money account. Thank you!`;
        iconSymbol = "💵";
     } else {
-       text = notificationMsg || `MaketiConnect Update: Direct chat notice from Sipho's Fresh Vegetables.`;
+       text = notificationMsg || `MaketiConnect Update: Direct chat notice from John's Fresh Vegetables.`;
        iconSymbol = "✉️";
     }
 
@@ -443,7 +462,7 @@ export default function SellerDashboard() {
   };
 
   const [sellerNotifications, setSellerNotifications] = useState<NotificationItem[]>([
-    { id: '1', type: 'success', title: 'Payment Received', message: 'You received E 250.00 from Sipho via MTN MoMo.', time: '10m ago', read: false },
+    { id: '1', type: 'success', title: 'Payment Received', message: 'You received E 250.00 from John via MTN MoMo.', time: '10m ago', read: false },
     { id: '2', type: 'info', title: 'Order Paid', message: 'Order #8920 (Handcrafted Baskets) has been fully paid.', time: '1h ago', read: false },
     { id: '3', type: 'success', title: 'Cash Payment Confirmed', message: 'Cash on delivery for Order #8911 confirmed by driver.', time: '3h ago', read: true },
   ]);
@@ -851,7 +870,7 @@ export default function SellerDashboard() {
                            type="text"
                            value={designerFacebook}
                            onChange={(e) => setDesignerFacebook(e.target.value)}
-                           placeholder="e.g. SiphoOrganicSells"
+                           placeholder="e.g. mybusinessname"
                            className="border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-xs font-medium focus:bg-white outline-none"
                         />
                       </div>
@@ -893,6 +912,56 @@ export default function SellerDashboard() {
                       </div>
                    </div>
 
+                   {/* Recommended Payment Platform Configuration Card */}
+                   <div className="bg-slate-50 p-4 rounded-3xl border border-slate-150 flex flex-col gap-3 mt-1 text-left">
+                      <div>
+                         <span className="block text-[9px] font-black text-indigo-700 uppercase tracking-widest font-mono mb-1">Recommended Payment Platform for Buyers</span>
+                         <p className="text-[10px] text-gray-500 mb-2 leading-normal font-sans">
+                            Specify the primary payment method you prefer on checkout. eMakethe will highlight this for buyers to speed up payment and escrow lock!
+                         </p>
+                         <div className="grid grid-cols-2 gap-1.5 font-sans">
+                            {['MTN MoMo', 'Eswatini Mobile eMali', 'FNB Bank', 'Standard Bank'].map(platform => (
+                               <button
+                                  key={platform}
+                                  type="button"
+                                  onClick={() => setDesignerPaymentPlatform(platform)}
+                                  className={`py-2 px-1 rounded-xl text-[10px] font-bold text-center border transition-all ${
+                                     designerPaymentPlatform === platform 
+                                       ? 'bg-indigo-600 border-indigo-600 text-white font-extrabold' 
+                                       : 'bg-white border-gray-200 text-gray-600 hover:bg-indigo-50/20'
+                                  }`}
+                               >
+                                  {platform === 'MTN MoMo' ? '📱 MTN MoMo' : platform === 'Eswatini Mobile eMali' ? '📱 eMali' : platform === 'FNB Bank' ? '🏦 FNB Bank' : '🏦 Standard Bank'}
+                               </button>
+                            ))}
+                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 font-sans">
+                         <div className="flex flex-col gap-1">
+                            <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Account / Wallet Number:</label>
+                            <input 
+                              type="text"
+                              value={designerPayoutNumber}
+                              onChange={(e) => setDesignerPayoutNumber(e.target.value)}
+                              placeholder="e.g. 7611 2233"
+                              className="border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white outline-none font-mono"
+                            />
+                         </div>
+
+                         <div className="flex flex-col gap-1">
+                            <label className="text-[10px] text-gray-600 font-bold uppercase tracking-wide">Recipient Full Name:</label>
+                            <input 
+                              type="text"
+                              value={designerPayoutName}
+                              onChange={(e) => setDesignerPayoutName(e.target.value)}
+                              placeholder="e.g. John Maseko"
+                              className="border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs font-semibold focus:bg-white outline-none"
+                            />
+                         </div>
+                      </div>
+                   </div>
+
                    <button 
                      type="button"
                      onClick={async () => {
@@ -907,7 +976,10 @@ export default function SellerDashboard() {
                              themeColor: designerTheme,
                              announcement: designerAnnouncement,
                              facebook: designerFacebook,
-                             instagram: designerInstagram
+                             instagram: designerInstagram,
+                             preferredPaymentPlatform: designerPaymentPlatform,
+                             payoutNumber: designerPayoutNumber,
+                             payoutName: designerPayoutName
                            });
                            alert("Yebo! Your Premium Brand Storefront has been published successfully and is live for all Swazi buyers!");
                          }
@@ -1193,6 +1265,38 @@ export default function SellerDashboard() {
                     </button>
                  </div>
               </div>
+            </div>
+            
+            {/* Sales Performance Chart */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
+               <h3 className="font-bold text-gray-800 text-sm mb-4">Daily Sales Performance</h3>
+               <div className="h-64 w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                   <LineChart
+                     data={[
+                       { name: 'Mon', sales: 120, views: 300 },
+                       { name: 'Tue', sales: 250, views: 450 },
+                       { name: 'Wed', sales: 180, views: 350 },
+                       { name: 'Thu', sales: 320, views: 500 },
+                       { name: 'Fri', sales: 450, views: 700 },
+                       { name: 'Sat', sales: 500, views: 800 },
+                       { name: 'Sun', sales: 480, views: 750 },
+                     ]}
+                     margin={{ top: 5, right: 20, left: -20, bottom: 5 }}
+                   >
+                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                     <Tooltip 
+                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                       labelStyle={{ fontWeight: 'bold', color: '#374151' }}
+                     />
+                     <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                     <Line type="monotone" dataKey="sales" name="Sales (E)" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                     <Line type="monotone" dataKey="views" name="Profile Views" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} />
+                   </LineChart>
+                 </ResponsiveContainer>
+               </div>
             </div>
 
             {/* Popular Products */}
@@ -1530,7 +1634,7 @@ export default function SellerDashboard() {
                  <Sparkles size={24} className="text-white" />
                </div>
                <div>
-                  <h3 className="font-display font-bold text-lg mb-1">Coach Sipho</h3>
+                  <h3 className="font-display font-bold text-lg mb-1">Coach John</h3>
                   <p className="text-[11px] text-indigo-100 leading-relaxed font-medium">Empowering informal merchants across Eswatini. Tap any of the business pillars below to fetch target advice.</p>
                </div>
              </div>
@@ -1565,7 +1669,7 @@ export default function SellerDashboard() {
              {isLoadingCoach ? (
                 <div className="bg-white p-8 rounded-2xl border border-gray-100 flex flex-col items-center justify-center gap-2">
                    <Sparkles size={28} className="animate-spin text-indigo-500" />
-                   <p className="text-xs text-gray-400 font-bold font-mono">Coach Sipho is formulating advices...</p>
+                   <p className="text-xs text-gray-400 font-bold font-mono">Coach John is formulating advices...</p>
                 </div>
              ) : (
                 coachResponse && (
@@ -2095,7 +2199,7 @@ export default function SellerDashboard() {
                          value={bannerTitle} 
                          onChange={(e) => setBannerTitle(e.target.value)}
                          className="bg-white border border-gray-200 rounded-xl p-2.5 text-xs text-gray-800 font-bold outline-none"
-                         placeholder="e.g. Sipho's Fresh Herbs"
+                         placeholder="e.g. John's Fresh Herbs"
                        />
                     </div>
 
@@ -2180,7 +2284,7 @@ export default function SellerDashboard() {
                                    <span className="text-[7.5px] bg-amber-500 text-slate-900 font-black px-1.5 py-0.5 rounded tracking-wide">CODE: {bannerCoupon}</span>
                                 )}
                              </div>
-                             <h4 className="font-display font-black text-xs text-white mt-1.5">{bannerTitle || "Sipho's Produce Stall"}</h4>
+                             <h4 className="font-display font-black text-xs text-white mt-1.5">{bannerTitle || "John's Produce Stall"}</h4>
                              <p className="text-[10px] text-white/90 mt-0.5 leading-tight font-medium line-clamp-2">{bannerHeading || 'Fresh cabbage & herbs special!'}</p>
                              <span className="text-[8px] text-white/70 block mt-1">Stall location: Mbabane stalls ({products.length} items online)</span>
                           </div>

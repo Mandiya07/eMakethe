@@ -27,6 +27,8 @@ import {
   CreditCard
 } from 'lucide-react';
 import { useState, FormEvent, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Unified type and configuration for African MoMo networks
 type CountryCode = 'SZ' | 'KE' | 'GH' | 'UG' | 'SN';
@@ -130,45 +132,103 @@ export interface SubscriptionItem {
 export default function Wallet() {
   // Navigation tabs: wallet status, mobile money integrations toolbox, escrow holds, bank transfers, credit/debit cards
   const [activeTab, setActiveTab] = useState<'overview' | 'integration' | 'escrow' | 'bank' | 'card'>('overview');
+
+  // Admin Payout / Billing Config States
+  const [adminMomoName, setAdminMomoName] = useState('MaketiConnect Admin');
+  const [adminMomoNumber, setAdminMomoNumber] = useState('+268 7611 2233');
+  const [adminMomoOperator, setAdminMomoOperator] = useState('MTN MoMo');
+  const [adminBankName, setAdminBankName] = useState('Standard Bank Eswatini');
+  const [adminBankAccountName, setAdminBankAccountName] = useState('MaketiConnect (PTY) LTD');
+  const [adminBankAccountNumber, setAdminBankAccountNumber] = useState('910234451092');
+  const [adminBankBranchCode, setAdminBankBranchCode] = useState('663108 (Mbabane)');
+  const [adminBankType, setAdminBankType] = useState('Corporate Trust Escrow');
+  const [adminInstructions, setAdminInstructions] = useState('Please process the EFT from your own banking portal using the unique reference code generated below to ensure automatic system matching.');
+
+  // Load existing billing settings from Firestore
+  useEffect(() => {
+    const fetchBillingConfig = async () => {
+      try {
+        const docRef = doc(db, 'admins', 'payment_settings');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.momoName) setAdminMomoName(data.momoName);
+          if (data.momoNumber) setAdminMomoNumber(data.momoNumber);
+          if (data.momoOperator) setAdminMomoOperator(data.momoOperator);
+          if (data.bankName) setAdminBankName(data.bankName);
+          if (data.bankAccountName) setAdminBankAccountName(data.bankAccountName);
+          if (data.bankAccountNumber) setAdminBankAccountNumber(data.bankAccountNumber);
+          if (data.bankBranchCode) setAdminBankBranchCode(data.bankBranchCode);
+          if (data.bankType) setAdminBankType(data.bankType);
+          if (data.instructions) setAdminInstructions(data.instructions);
+        }
+      } catch (err) {
+        console.warn('Could not fetch existing admin billing configuration:', err);
+      }
+    };
+    fetchBillingConfig();
+  }, []);
   
   // Regional settings
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>('SZ');
   const [selectedProviderIdx, setSelectedProviderIdx] = useState(0);
 
   // Stateful financial numbers - pre-populate with some balance to make testing easier
-  const [balance, setBalance] = useState(480.00);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: 'tx-802',
-      type: 'Merchant Payment',
-      detail: 'Mbabane Kiosk #492',
-      provider: 'MTN MoMo',
-      date: '10 mins ago',
-      amount: 120.00,
-      isPositive: false,
-      status: 'Completed'
-    },
-    {
-      id: 'tx-711',
-      type: 'Wallet-to-Wallet Transfer',
-      detail: 'Received from +268 7611 2345',
-      provider: 'MTN MoMo',
-      date: '1 hour ago',
-      amount: 250.00,
-      isPositive: true,
-      status: 'Completed'
-    },
-    {
-      id: 'tx-605',
-      type: 'Cash-out (Agent Withdrawal)',
-      detail: 'Withdrawn at Agent #77102',
-      provider: 'Eswatini Mobile eMali',
-      date: 'Yesterday',
-      amount: 50.00,
-      isPositive: false,
-      status: 'Completed'
+  const [balance, setBalance] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem('emakethe_wallet_balance');
+      if (stored !== null) return parseFloat(stored);
+      localStorage.setItem('emakethe_wallet_balance', '0.00');
+      return 0.00;
+    } catch {
+      return 0.00;
     }
-  ]);
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      const stored = localStorage.getItem('emakethe_wallet_transactions');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Sync state changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('emakethe_wallet_balance', balance.toFixed(2));
+      window.dispatchEvent(new Event('emakethe_wallet_balance_changed'));
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [balance]);
+
+  // Listen for external changes (like system purges)
+  useEffect(() => {
+    const handleBalanceChange = () => {
+      try {
+        const stored = localStorage.getItem('emakethe_wallet_balance');
+        if (stored !== null) {
+          const parsed = parseFloat(stored);
+          setBalance(prev => {
+            if (prev !== parsed) return parsed;
+            return prev;
+          });
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('emakethe_wallet_balance_changed', handleBalanceChange);
+    return () => window.removeEventListener('emakethe_wallet_balance_changed', handleBalanceChange);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('emakethe_wallet_transactions', JSON.stringify(transactions));
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [transactions]);
 
   // Escrow state list loaded dynamically
   const [escrowItems, setEscrowItems] = useState<{ id: string; item: string; amount: number; recipient: string; description: string; provider: string; status: string; date: string; image?: string; buyerPhone?: string; }[]>(() => {
@@ -231,7 +291,7 @@ export default function Wallet() {
         id: 'card-1',
         brand: 'Visa',
         number: '•••• •••• •••• 4242',
-        holder: 'Sipho Myati',
+        holder: 'John Doe',
         expiry: '12/28',
         cvv: '123',
         isDefault: true,
@@ -1221,7 +1281,7 @@ export default function Wallet() {
                           type="text" 
                           value={merchantTill}
                           onChange={(e) => setMerchantTill(e.target.value)}
-                          placeholder="149202 (Sipho's)"
+                          placeholder="149202 (John's)"
                           className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold font-mono outline-none focus:border-green-500"
                         />
                      </div>
@@ -1487,7 +1547,7 @@ export default function Wallet() {
                              required
                              value={newCardHolder}
                              onChange={(e) => setNewCardHolder(e.target.value)}
-                             placeholder="Sipho Myati"
+                             placeholder="John Myati"
                              className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none"
                            />
                         </div>
@@ -1732,24 +1792,24 @@ export default function Wallet() {
                     <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs font-medium text-slate-700 mt-0.5">
                       <div>
                         <p className="text-[9px] text-slate-400 uppercase font-bold">Receiver Bank</p>
-                        <p className="font-extrabold text-slate-900">Standard Bank Eswatini</p>
+                        <p className="font-extrabold text-slate-900">{adminBankName}</p>
                       </div>
                       <div>
                         <p className="text-[9px] text-slate-400 uppercase font-bold">Account Number</p>
-                        <p className="font-mono font-bold text-slate-950">9102 3445 1092</p>
+                        <p className="font-mono font-bold text-slate-950">{adminBankAccountNumber}</p>
                       </div>
                       <div>
                         <p className="text-[9px] text-slate-400 uppercase font-bold">Branch Code</p>
-                        <p className="font-mono text-slate-900">663108 (Mbabane)</p>
+                        <p className="font-mono text-slate-900">{adminBankBranchCode}</p>
                       </div>
                       <div>
                         <p className="text-[9px] text-slate-400 uppercase font-bold">Account Type</p>
-                        <p className="text-slate-900">Corporate Trust Escrow</p>
+                        <p className="text-slate-900">{adminBankType}</p>
                       </div>
                     </div>
 
                     <div className="bg-white/70 p-2.5 rounded-xl border border-indigo-100 text-[10px] text-indigo-800 font-medium leading-relaxed mt-1">
-                      💡 <span className="font-extrabold">Instructions:</span> Please process the EFT from your own banking portal using the unique reference code generated below to ensure automatic system matching.
+                      💡 <strong>Instructions:</strong> {adminInstructions}
                     </div>
                   </div>
 
@@ -2213,7 +2273,7 @@ export default function Wallet() {
                    </p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 font-sans">
                   <div className="bg-slate-50 p-4 rounded-3xl border border-gray-100 flex items-center gap-3">
                      <div className="w-10 h-10 rounded-2xl bg-yellow-400 text-black flex items-center justify-center font-black text-xs shrink-0 font-mono">
                        MoMo
@@ -2221,6 +2281,18 @@ export default function Wallet() {
                      <div>
                        <span className="block text-[10px] text-gray-400 uppercase font-bold">Selected network provider:</span>
                        <span className="text-xs font-black text-gray-800">{activeProvider.name}</span>
+                     </div>
+                  </div>
+
+                  <div className="bg-yellow-50/70 border border-yellow-200/60 rounded-2xl p-3.5 text-[10.5px] text-slate-700 leading-normal mb-1">
+                     <p className="font-black text-yellow-800 uppercase text-[8.5px] tracking-wider mb-1 flex items-center gap-1">
+                       💡 Direct Manual Pay Option:
+                     </p>
+                     You can also send directly to the Admin MoMo account:
+                     <div className="font-semibold text-slate-800 mt-1 border-t border-yellow-200/40 pt-1.5 space-y-0.5">
+                       <div>Operator: <span className="font-mono font-black text-slate-900">{adminMomoOperator}</span></div>
+                       <div>MoMo Number: <span className="font-mono font-black text-slate-900">{adminMomoNumber}</span></div>
+                       <div>Recipient Name: <span className="font-black text-slate-900">{adminMomoName}</span></div>
                      </div>
                   </div>
 

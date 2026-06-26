@@ -141,7 +141,7 @@ export default function RegisterSeller() {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-extrabold text-sm text-white truncate">
-                {shopName || 'Sipho\'s Veggies & Sprays'}
+                {shopName || 'Store\'s Veggies & Sprays'}
               </h3>
               <p className="text-[9px] text-slate-300 mt-0.5 flex items-center gap-1">
                 <MapPin size={9} className="text-emerald-400" />
@@ -214,7 +214,7 @@ export default function RegisterSeller() {
                 type="text" 
                 value={shopName}
                 onChange={e => setShopName(e.target.value)}
-                placeholder="e.g. Sipho's Organic Crops" 
+                placeholder="e.g. My Farm Products" 
                 required 
                 className="bg-transparent flex-1 outline-none text-xs font-semibold text-gray-800 placeholder-gray-400" 
               />

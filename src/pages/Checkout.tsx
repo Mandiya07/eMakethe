@@ -22,6 +22,8 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, FormEvent } from 'react';
 import { useFirebase } from '../components/FirebaseProvider';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Highly customizable African regional configuration
 interface MobileMoneyProvider {
@@ -75,6 +77,41 @@ export default function Checkout() {
   
   // Static wallet balance setup for client split-payments demo
   const userWalletBalance = 240.00;
+
+  // Admin Payout Settings (loaded from Firestore with safe hardcoded fallbacks)
+  const [adminMomoName, setAdminMomoName] = useState('MaketiConnect Admin');
+  const [adminMomoNumber, setAdminMomoNumber] = useState('+268 7611 2233');
+  const [adminMomoOperator, setAdminMomoOperator] = useState('MTN MoMo');
+  const [adminBankName, setAdminBankName] = useState('Standard Bank Eswatini');
+  const [adminBankAccountName, setAdminBankAccountName] = useState('MaketiConnect (PTY) LTD');
+  const [adminBankAccountNumber, setAdminBankAccountNumber] = useState('9102 3445 1092');
+  const [adminBankBranchCode, setAdminBankBranchCode] = useState('663108');
+  const [adminBankType, setAdminBankType] = useState('Corporate Trust Escrow');
+  const [adminInstructions, setAdminInstructions] = useState('Please use your registered Shop Name or Phone Number as payment reference and upload confirmation.');
+
+  useEffect(() => {
+    const loadAdminPayments = async () => {
+      try {
+        const docRef = doc(db, 'admins', 'payment_settings');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.momoName) setAdminMomoName(data.momoName);
+          if (data.momoNumber) setAdminMomoNumber(data.momoNumber);
+          if (data.momoOperator) setAdminMomoOperator(data.momoOperator);
+          if (data.bankName) setAdminBankName(data.bankName);
+          if (data.bankAccountName) setAdminBankAccountName(data.bankAccountName);
+          if (data.bankAccountNumber) setAdminBankAccountNumber(data.bankAccountNumber);
+          if (data.bankBranchCode) setAdminBankBranchCode(data.bankBranchCode);
+          if (data.bankType) setAdminBankType(data.bankType);
+          if (data.instructions) setAdminInstructions(data.instructions);
+        }
+      } catch (err) {
+        console.warn('Error loading admin payment settings:', err);
+      }
+    };
+    loadAdminPayments();
+  }, []);
 
   if (!product || !seller) return <div className="p-10 text-center font-bold">Product or Seller not found</div>;
 
@@ -138,10 +175,7 @@ export default function Checkout() {
     setTimeout(() => {
       try {
         const existingData = localStorage.getItem('activeEscrows');
-        const escrowList = existingData ? JSON.parse(existingData) : [
-          { id: 'ESCO-921A-108', item: 'Fresh Premium Tomatoes', amount: 120.00, recipient: "Sipho's Fruits & Vegetables", description: 'Awaiting delivery acknowledgement', provider: 'MTN Mobile Money', status: 'Locked', date: 'Just now' },
-          { id: 'ESCO-921A-240', item: 'Custom Traditional Attire', amount: 280.00, recipient: "Zinhle's Custom Boutique", description: 'In progress dress fabrication', provider: 'Eswatini Mobile eMali', status: 'Locked', date: 'Yesterday' }
-        ];
+        const escrowList = existingData ? JSON.parse(existingData) : [];
 
         const newEscrow = {
           id: `ESCO-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`,
@@ -175,6 +209,41 @@ export default function Checkout() {
         // Prepend the new escrow item
         escrowList.unshift(newEscrow);
         localStorage.setItem('activeEscrows', JSON.stringify(escrowList));
+
+        // Deduct from wallet balance
+        const currentBal = parseFloat(localStorage.getItem('emakethe_wallet_balance') || '0.00');
+        const newBal = Math.max(0, currentBal - itemTotal);
+        localStorage.setItem('emakethe_wallet_balance', newBal.toFixed(2));
+        
+        // Add wallet transaction record
+        const txsStr = localStorage.getItem('emakethe_wallet_transactions') || '[]';
+        const txs = JSON.parse(txsStr);
+        txs.unshift({
+          id: `tx-${Math.floor(100 + Math.random() * 900)}`,
+          type: 'Merchant Payment',
+          detail: seller.name,
+          provider: paymentMode === 'bank' ? 'Bank Transfer' : REGIONAL_SYSTEMS[selectedProviderIdx].name,
+          date: 'Just now',
+          amount: itemTotal,
+          isPositive: false,
+          status: 'Completed'
+        });
+        localStorage.setItem('emakethe_wallet_transactions', JSON.stringify(txs));
+
+        // Add customer notification record
+        const notificationsStr = localStorage.getItem('emakethe_customer_notifications') || '[]';
+        const list = JSON.parse(notificationsStr);
+        list.unshift({
+          id: `nt-${Math.floor(1000 + Math.random() * 9000)}`,
+          type: 'success',
+          title: 'Payment Escrow Locked',
+          message: `Your payment of E ${itemTotal.toFixed(2)} for ${product.name} is securely locked in platform escrow.`,
+          time: 'Just now',
+          read: false
+        });
+        localStorage.setItem('emakethe_customer_notifications', JSON.stringify(list));
+        window.dispatchEvent(new Event('emakethe_notifications_updated'));
+
       } catch (e) {
         console.warn('Error saving new escrow:', e);
       }
@@ -283,15 +352,15 @@ export default function Checkout() {
           <div className="grid grid-cols-2 gap-y-2 gap-x-4 font-medium text-slate-200">
             <div>
               <span className="text-[9px] text-slate-400 uppercase font-bold block">Receiver Bank</span>
-              <span className="font-extrabold text-white">Standard Bank Eswatini</span>
+              <span className="font-extrabold text-white">{adminBankName}</span>
             </div>
             <div>
               <span className="text-[9px] text-slate-400 uppercase font-bold block">Account Number</span>
-              <span className="font-mono font-bold text-white">9102 3445 1092</span>
+              <span className="font-mono font-bold text-white">{adminBankAccountNumber}</span>
             </div>
             <div>
               <span className="text-[9px] text-slate-400 uppercase font-bold block">Branch Code</span>
-              <span className="font-mono text-white">663108</span>
+              <span className="font-mono text-white">{adminBankBranchCode}</span>
             </div>
             <div>
               <span className="text-[9px] text-slate-400 uppercase font-bold block">EFT Reference Code</span>
@@ -301,6 +370,9 @@ export default function Checkout() {
           <p className="text-[10px] text-slate-300 mt-2 border-t border-indigo-900/50 pt-1.5 font-normal">
             💡 Settle <span className="font-bold text-white">{activeProv.currency} {mobileMoneyAmount.toFixed(2)}</span> from your bank portal using the reference above.
           </p>
+          <div className="text-[9.5px] text-indigo-200 bg-indigo-900/40 p-2 rounded-xl mt-2 border border-indigo-800/50 leading-relaxed">
+            📢 <strong>Admin Guidelines:</strong> {adminInstructions}
+          </div>
         </div>
 
         <div className="bg-slate-800 p-5 rounded-3xl border border-slate-700/80 w-full text-left flex flex-col gap-3">
@@ -606,7 +678,7 @@ export default function Checkout() {
             <div>
                <h4 className="font-extrabold uppercase text-[10px] tracking-wide text-emerald-900">100% Secure Escrow Lock Guarantee</h4>
                <p className="text-[10px] text-emerald-800 leading-relaxed mt-0.5">
-                 Funds stay locked securely in the eMakethe/MaketiConnect Escrow Trust Node. The supplier Sipho only receives the payoff once you confirm the harvest delivery!
+                 Funds stay locked securely in the eMakethe/MaketiConnect Escrow Trust Node. The supplier Store only receives the payoff once you confirm the harvest delivery!
                </p>
             </div>
          </div>
@@ -738,6 +810,55 @@ export default function Checkout() {
          )}
 
           {/* Primary Payment Mode Switcher */}
+          {/* Seller's Recommended Payment Platform Panel */}
+          <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 p-4 rounded-3xl border border-green-500/25 shadow-sm flex flex-col gap-3 text-left">
+             <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-green-500/20 text-green-600 flex items-center justify-center font-black text-xs shrink-0 shadow-inner animate-pulse">
+                   ★
+                </div>
+                <div>
+                   <h4 className="text-[11.5px] font-black text-green-950 uppercase tracking-wide">Recommended Payment Platform</h4>
+                   <p className="text-[9px] text-green-700 font-medium">Official recommendation on the app for {seller.name}</p>
+                </div>
+             </div>
+
+             <div className="bg-white/95 p-3 rounded-2xl border border-green-100/80 text-[11px] leading-relaxed text-slate-700 flex flex-col gap-1.5 font-sans shadow-sm">
+                <div className="flex justify-between items-center pb-1 border-b border-gray-150">
+                   <span className="text-[9.5px] text-gray-400 font-bold uppercase">Platform Name</span>
+                   <span className="font-extrabold text-slate-800">{seller.preferredPaymentPlatform || 'MTN Mobile Money'}</span>
+                </div>
+                <div className="flex justify-between items-center pb-1 border-b border-gray-150">
+                   <span className="text-[9.5px] text-gray-400 font-bold uppercase">Account Name</span>
+                   <span className="font-black text-slate-800">{seller.payoutName || seller.name}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                   <span className="text-[9.5px] text-gray-400 font-bold uppercase">Account / Phone</span>
+                   <span className="font-mono font-black text-slate-800">{seller.payoutNumber || seller.phone}</span>
+                </div>
+             </div>
+
+             <button 
+                type="button"
+                onClick={() => {
+                   const preferred = seller.preferredPaymentPlatform || 'MTN MoMo';
+                   if (preferred === 'MTN MoMo' || preferred === 'Eswatini Mobile eMali') {
+                      setPaymentMode('momo');
+                      setSelectedProviderIdx(preferred === 'MTN MoMo' ? 0 : 1);
+                      const cleanedPhone = (seller.payoutNumber || seller.phone || '').replace(/\s+/g, '');
+                      setPhoneNumber(cleanedPhone);
+                   } else {
+                      setPaymentMode('bank');
+                      setBankTab('eft');
+                      setSelectedBank(preferred === 'FNB Bank' ? 'First National Bank (FNB) Eswatini' : 'Standard Bank Eswatini');
+                      setBankSenderName('Maseko Wholesalers Ltd');
+                   }
+                }}
+                className="w-full bg-green-600 hover:bg-green-700 active:scale-95 text-white font-extrabold text-[10.5px] uppercase tracking-wider py-2.5 rounded-xl transition-all shadow-md shadow-green-600/10 flex items-center justify-center gap-1 font-sans cursor-pointer"
+             >
+                ⚡ Use Recommended Payment Setup
+             </button>
+          </div>
+
           <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm flex gap-1.5 text-xs font-bold font-sans">
              <button 
                type="button"

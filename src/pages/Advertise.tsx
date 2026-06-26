@@ -1,10 +1,117 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Megaphone, MonitorPlay, Tags, BellRing, PackageSearch, CreditCard } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Megaphone, MonitorPlay, Tags, BellRing, PackageSearch, CreditCard, X, CheckCircle2, Landmark, Smartphone, Receipt, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function Advertise() {
   const navigate = useNavigate();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  
+  // Dynamic Ad Bookings state
+  const [adBookings, setAdBookings] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('emakethe_my_ad_bookings');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {
+      console.warn(e);
+    }
+    return [];
+  });
+
+  // Admin official billing settings state
+  const [adminMomoName, setAdminMomoName] = useState('MaketiConnect Admin');
+  const [adminMomoNumber, setAdminMomoNumber] = useState('+268 7611 2233');
+  const [adminMomoOperator, setAdminMomoOperator] = useState('MTN MoMo');
+  const [adminBankName, setAdminBankName] = useState('Standard Bank Eswatini');
+  const [adminBankAccountName, setAdminBankAccountName] = useState('MaketiConnect (PTY) LTD');
+  const [adminBankAccountNumber, setAdminBankAccountNumber] = useState('910234451092');
+  const [adminBankBranchCode, setAdminBankBranchCode] = useState('663108 (Mbabane)');
+  const [adminBankType, setAdminBankType] = useState('Corporate Trust Escrow');
+
+  // Checkout modal states
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [payMode, setPayMode] = useState<'momo' | 'bank'>('momo');
+  const [senderName, setSenderName] = useState('');
+  const [senderPhone, setSenderPhone] = useState('');
+  const [senderAccount, setSenderAccount] = useState('');
+  const [receiptNumber, setReceiptNumber] = useState('');
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [bookingCompleted, setBookingCompleted] = useState(false);
+
+  // Load administrative settings
+  useEffect(() => {
+    const fetchBilling = async () => {
+      try {
+        const docRef = doc(db, 'admins', 'payment_settings');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.momoName) setAdminMomoName(data.momoName);
+          if (data.momoNumber) setAdminMomoNumber(data.momoNumber);
+          if (data.momoOperator) setAdminMomoOperator(data.momoOperator);
+          if (data.bankName) setAdminBankName(data.bankName);
+          if (data.bankAccountName) setAdminBankAccountName(data.bankAccountName);
+          if (data.bankAccountNumber) setAdminBankAccountNumber(data.bankAccountNumber);
+          if (data.bankBranchCode) setAdminBankBranchCode(data.bankBranchCode);
+          if (data.bankType) setAdminBankType(data.bankType);
+        }
+      } catch (err) {
+        console.warn('Could not load administrative payment settings for advertiser:', err);
+      }
+    };
+    fetchBilling();
+  }, []);
+
+  const handleCreateAdBooking = async () => {
+    if (payMode === 'momo' && (!senderPhone || !senderName)) {
+      alert('Please fill in your Sender phone number and Sender name.');
+      return;
+    }
+    if (payMode === 'bank' && (!senderAccount || !senderName || !receiptNumber)) {
+      alert('Please fill in your Bank Account Number, Holder Name, and Bank Reference receipt serial.');
+      return;
+    }
+
+    setIsSubmittingBooking(true);
+    
+    const pkg = adPackages.find(p => p.id === selectedPackage);
+    const amountVal = pkg ? parseFloat(pkg.price.replace(/[^\d.]/g, '')) : 0;
+    
+    const newBooking = {
+      id: `AD-${Math.floor(1000 + Math.random() * 9000)}B`,
+      packageId: selectedPackage,
+      packageTitle: pkg?.title || 'Custom Ad Package',
+      amount: amountVal,
+      status: 'Pending Verification',
+      reference: payMode === 'momo' 
+        ? `${adminMomoOperator} (Sender: ${senderPhone} - ${senderName})`
+        : `EFT (${adminBankName} - Receipt: ${receiptNumber})`,
+      date: 'Just now',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      // Save to global Firestore database
+      await setDoc(doc(db, 'ad_bookings', newBooking.id), newBooking);
+      
+      // Update local storage representation
+      const updatedList = [newBooking, ...adBookings];
+      setAdBookings(updatedList);
+      localStorage.setItem('emakethe_my_ad_bookings', JSON.stringify(updatedList));
+      
+      setBookingCompleted(true);
+    } catch (err) {
+      console.error(err);
+      alert('Error creating ad booking in database. Proceeding with offline-first sandbox.');
+      const updatedList = [newBooking, ...adBookings];
+      setAdBookings(updatedList);
+      localStorage.setItem('emakethe_my_ad_bookings', JSON.stringify(updatedList));
+      setBookingCompleted(true);
+    } finally {
+      setIsSubmittingBooking(false);
+    }
+  };
 
   const adPackages = [
     {
@@ -132,6 +239,31 @@ export default function Advertise() {
                Contact Sales Team
             </button>
          </div>
+
+         {/* Real-time Advertisement Campaign Bookings list */}
+         <div className="mt-6 flex flex-col gap-3 font-sans">
+            <h3 className="font-black text-xs uppercase tracking-wider text-slate-500 px-1 flex items-center gap-1.5">
+               <Sparkles size={13} className="text-indigo-500" />
+               Your Campaign Bookings ({adBookings.length})
+            </h3>
+            {adBookings.map((b) => (
+               <div key={b.id} className="bg-white p-4 rounded-3xl border border-gray-150 shadow-sm flex justify-between items-center animate-in zoom-in-95">
+                  <div>
+                     <p className="font-extrabold text-xs text-slate-800">{b.packageTitle}</p>
+                     <p className="text-[9.5px] text-gray-500 mt-1 uppercase font-semibold">Ref: {b.reference}</p>
+                     <p className="text-[9px] text-gray-400 mt-0.5">{b.date}</p>
+                  </div>
+                  <div className="text-right">
+                     <span className="text-xs font-mono font-extrabold text-slate-800 block">E {b.amount?.toFixed(2)}</span>
+                     <span className={`text-[8px] font-black tracking-wider px-2 py-0.5 rounded-full uppercase mt-1 inline-block ${
+                        b.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                     }`}>
+                        {b.status}
+                     </span>
+                  </div>
+               </div>
+            ))}
+         </div>
       </div>
 
       {selectedPackage && (
@@ -145,15 +277,190 @@ export default function Advertise() {
                </div>
                <button 
                   onClick={() => {
-                     alert(`Proceeding to checkout for ${adPackages.find(p => p.id === selectedPackage)?.title}`);
+                     setBookingCompleted(false);
+                     setShowCheckoutModal(true);
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black uppercase tracking-wider text-xs px-6 py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex-1 text-center"
+                  className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black uppercase tracking-wider text-xs px-6 py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex-1 text-center cursor-pointer"
                >
                   Proceed to Payment
                </button>
             </div>
          </div>
       )}
-    </div>
+
+      {/* Interactive Advertiser Booking Modal */}
+      {showCheckoutModal && (
+         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 w-full h-full max-w-md mx-auto">
+            <div className="bg-white w-full rounded-t-[36px] rounded-b-[24px] p-6 shadow-2xl animate-in slide-in-from-bottom flex flex-col max-h-[85vh] overflow-y-auto">
+               <div className="flex justify-between items-center mb-5 shrink-0">
+                  <div>
+                     <h3 className="font-black text-gray-800 text-base uppercase tracking-tight flex items-center gap-1.5 font-sans">
+                        📢 Book Ad Campaign
+                     </h3>
+                     <p className="text-[10px] text-gray-500 font-medium font-sans">Pay official administrator account to live-boost your reach</p>
+                  </div>
+                  <button onClick={() => setShowCheckoutModal(false)} className="bg-gray-100 hover:bg-gray-200 p-2 rounded-full text-gray-500 cursor-pointer">
+                     <X size={16} />
+                  </button>
+               </div>
+
+               {bookingCompleted ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center font-sans">
+                     <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4 border border-green-150 animate-bounce">
+                        <CheckCircle2 size={36} className="text-green-600 stroke-[2.5]" />
+                     </div>
+                     <h4 className="font-black text-slate-850 text-base uppercase tracking-tight">Yebo! Order Submitted</h4>
+                     <p className="text-xs text-gray-500 max-w-[280px] mt-1.5 leading-relaxed">
+                        Your advertising request has been submitted to the MaketiConnect Administrator. We will review your payment receipt reference and make the campaign **Active** within 2 hours!
+                     </p>
+                     <button 
+                        onClick={() => setShowCheckoutModal(false)}
+                        className="mt-6 w-full bg-slate-900 hover:bg-slate-850 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                     >
+                        Done & Continue
+                     </button>
+                  </div>
+               ) : (
+                  <div className="flex flex-col gap-4 font-sans text-left">
+                     <div className="bg-slate-50 p-3.5 rounded-2xl border border-gray-150 text-xs flex justify-between items-center">
+                        <div>
+                           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Chosen Channel</span>
+                           <strong className="text-slate-850 text-[13px]">{adPackages.find(p => p.id === selectedPackage)?.title}</strong>
+                        </div>
+                        <span className="font-mono font-black text-indigo-600 text-sm">
+                           {adPackages.find(p => p.id === selectedPackage)?.price}
+                        </span>
+                     </div>
+
+                     {/* Payment Method Switcher */}
+                     <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-xl text-[10.5px] font-bold">
+                        <button 
+                           type="button"
+                           onClick={() => setPayMode('momo')}
+                           className={`py-2 rounded-lg flex items-center justify-center gap-1 transition-all ${payMode === 'momo' ? 'bg-white text-indigo-700 shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-800'}`}
+                        >
+                           <Smartphone size={13} /> Mobile Money
+                        </button>
+                        <button 
+                           type="button"
+                           onClick={() => setPayMode('bank')}
+                           className={`py-2 rounded-lg flex items-center justify-center gap-1 transition-all ${payMode === 'bank' ? 'bg-white text-indigo-700 shadow-sm font-extrabold' : 'text-gray-500 hover:text-gray-800'}`}
+                        >
+                           <Landmark size={13} /> Bank Transfer (EFT)
+                        </button>
+                     </div>
+
+                     {/* Official Billing Details Card */}
+                     <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/5 p-4 rounded-2xl border border-indigo-500/20 text-xs leading-normal text-slate-700 flex flex-col gap-1.5">
+                        <span className="text-[9px] font-black text-indigo-700 uppercase tracking-widest block mb-1">Make Payment to Admin:</span>
+                        
+                        {payMode === 'momo' ? (
+                           <>
+                              <div className="flex justify-between items-center pb-1 border-b border-gray-150/50">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Operator</span>
+                                 <span className="font-extrabold text-slate-800">{adminMomoOperator}</span>
+                              </div>
+                              <div className="flex justify-between items-center pb-1 border-b border-gray-150/50">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Account Name</span>
+                                 <span className="font-black text-slate-800">{adminMomoName}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Admin MoMo Number</span>
+                                 <span className="font-mono font-black text-slate-800">{adminMomoNumber}</span>
+                              </div>
+                           </>
+                        ) : (
+                           <>
+                              <div className="flex justify-between items-center pb-1 border-b border-gray-150/50">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Bank</span>
+                                 <span className="font-extrabold text-slate-800">{adminBankName}</span>
+                              </div>
+                              <div className="flex justify-between items-center pb-1 border-b border-gray-150/50">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Account Name</span>
+                                 <span className="font-black text-slate-800">{adminBankAccountName}</span>
+                              </div>
+                              <div className="flex justify-between items-center pb-1 border-b border-gray-150/50">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Account Number</span>
+                                 <span className="font-mono font-black text-slate-800">{adminBankAccountNumber}</span>
+                              </div>
+                              <div className="flex justify-between items-center pb-1 border-b border-gray-150/50">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Branch Code</span>
+                                 <span className="font-mono font-semibold text-slate-800">{adminBankBranchCode}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                 <span className="text-[9.5px] text-gray-400 font-bold uppercase">Account Type</span>
+                                 <span className="font-bold text-slate-850">{adminBankType}</span>
+                              </div>
+                           </>
+                        )}
+                     </div>
+
+                     {/* Sender Proof Reference Inputs */}
+                     <div className="flex flex-col gap-3 mt-1">
+                        <p className="text-[10px] text-gray-400 leading-snug">
+                           Transfer the exact amount to the details above, then enter your payment details below to submit verification reference.
+                        </p>
+
+                        <div className="flex flex-col gap-1">
+                           <label className="text-[10px] text-gray-600 font-bold uppercase">Your Business / Sender Name:</label>
+                           <input 
+                              type="text"
+                              value={senderName}
+                              onChange={(e) => setSenderName(e.target.value)}
+                              placeholder="e.g. Store Marketing Ltd"
+                              className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:border-indigo-500 outline-none"
+                           />
+                        </div>
+
+                        {payMode === 'momo' ? (
+                           <div className="flex flex-col gap-1">
+                              <label className="text-[10px] text-gray-600 font-bold uppercase">Your MoMo Phone Number:</label>
+                              <input 
+                                 type="text"
+                                 value={senderPhone}
+                                 onChange={(e) => setSenderPhone(e.target.value)}
+                                 placeholder="e.g. 7611 2233"
+                                 className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:border-indigo-500 outline-none font-mono"
+                              />
+                           </div>
+                        ) : (
+                           <div className="grid grid-cols-2 gap-2">
+                              <div className="flex flex-col gap-1">
+                                 <label className="text-[10px] text-gray-600 font-bold uppercase">Your Bank Acc #:</label>
+                                 <input 
+                                    type="text"
+                                    value={senderAccount}
+                                    onChange={(e) => setSenderAccount(e.target.value)}
+                                    placeholder="e.g. 102049219"
+                                    className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:border-indigo-500 outline-none font-mono"
+                                 />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                 <label className="text-[10px] text-gray-600 font-bold uppercase">EFT Ref / Receipt Serial:</label>
+                                 <input 
+                                    type="text"
+                                    value={receiptNumber}
+                                    onChange={(e) => setReceiptNumber(e.target.value)}
+                                    placeholder="e.g. EFT-940210"
+                                    className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold focus:border-indigo-500 outline-none font-mono"
+                                 />
+                              </div>
+                           </div>
+                        )}
+
+                        <button 
+                           onClick={handleCreateAdBooking}
+                           disabled={isSubmittingBooking}
+                           className="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-extrabold uppercase text-xs py-3.5 rounded-xl transition-all shadow-md shadow-indigo-600/10 cursor-pointer flex justify-center items-center gap-1.5"
+                        >
+                           {isSubmittingBooking ? 'Submitting Receipt...' : '🚀 Submit Verification Receipt'}
+                        </button>
+                     </div>
+                  </div>
+               )}
+            </div>
+         </div>
+      )}
+   </div>
   );
 }

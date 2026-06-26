@@ -44,15 +44,30 @@ export default function Home() {
     } catch {}
   };
 
-  const [customerNotifications, setCustomerNotifications] = useState<NotificationItem[]>([
-    { id: '1', type: 'success', title: 'Payment Successful', message: 'Your payment of E 250.00 for Fresh Cabbages was processed.', time: '2m ago', read: false },
-    { id: '2', type: 'info', title: 'Receipt Ready', message: 'Your receipt for Order #4092 is ready for download.', time: '5m ago', read: false },
-    { id: '3', type: 'pending', title: 'Payment Pending', message: 'Waiting for Mobile Money confirmation for E 120.00.', time: '1h ago', read: true },
-    { id: '4', type: 'error', title: 'Payment Failed', message: 'Insufficient funds on your MTN MoMo account.', time: '1d ago', read: true },
-  ]);
+  const [customerNotifications, setCustomerNotifications] = useState<NotificationItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_customer_notifications');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  useEffect(() => {
+    const handleNotificationsUpdated = () => {
+      try {
+        const saved = localStorage.getItem('emakethe_customer_notifications');
+        setCustomerNotifications(saved ? JSON.parse(saved) : []);
+      } catch {}
+    };
+    window.addEventListener('emakethe_notifications_updated', handleNotificationsUpdated);
+    return () => window.removeEventListener('emakethe_notifications_updated', handleNotificationsUpdated);
+  }, []);
 
   const markCustomerNotificationsRead = () => {
-    setCustomerNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = customerNotifications.map(n => ({ ...n, read: true }));
+    setCustomerNotifications(updated);
+    try {
+      localStorage.setItem('emakethe_customer_notifications', JSON.stringify(updated));
+    } catch {}
   };
 
   // Load advertiser campaigns from localStorage
@@ -294,64 +309,68 @@ export default function Home() {
       </div>
 
       {/* Promotions */}
-      <div className="px-4 mb-6">
-        <div className="flex justify-between items-end mb-3 px-1">
-          <h2 className="text-sm font-bold text-gray-800">Promotions</h2>
+      {PRODUCTS.length > 0 && (
+        <div className="px-4 mb-6">
+          <div className="flex justify-between items-end mb-3 px-1">
+            <h2 className="text-sm font-bold text-gray-800">Promotions</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
+            {PRODUCTS.slice(0, 2).map((product, idx) => (
+              <Link to={`/product/${product.id}`} key={`promo-${product.id}`} className={`w-full rounded-2xl p-4 text-white flex justify-between items-center shadow-md transition-all hover:scale-[1.01] hover:shadow-lg ${idx === 0 ? 'bg-gradient-to-r from-orange-400 to-red-500' : 'bg-gradient-to-r from-purple-500 to-indigo-500'}`}>
+                 <div className="flex-1 min-w-0 pr-1">
+                    <span className="bg-white/25 text-[10px] font-black px-2 py-0.5 rounded-full mb-1 inline-block tracking-wider">20% OFF</span>
+                    <h3 className="font-black text-sm sm:text-base line-clamp-1 mt-1">{product.name}</h3>
+                    <p className="text-[11px] font-medium text-white/90 mt-1">Free Delivery nearby</p>
+                 </div>
+                 <img src={product.images?.[0] || ""} className="w-16 h-16 rounded-xl object-cover border-2 border-white/20 shadow-sm ml-2 shrink-0" />
+              </Link>
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
-          {PRODUCTS.slice(0, 2).map((product, idx) => (
-            <Link to={`/product/${product.id}`} key={`promo-${product.id}`} className={`w-full rounded-2xl p-4 text-white flex justify-between items-center shadow-md transition-all hover:scale-[1.01] hover:shadow-lg ${idx === 0 ? 'bg-gradient-to-r from-orange-400 to-red-500' : 'bg-gradient-to-r from-purple-500 to-indigo-500'}`}>
-               <div className="flex-1 min-w-0 pr-1">
-                  <span className="bg-white/25 text-[10px] font-black px-2 py-0.5 rounded-full mb-1 inline-block tracking-wider">20% OFF</span>
-                  <h3 className="font-black text-sm sm:text-base line-clamp-1 mt-1">{product.name}</h3>
-                  <p className="text-[11px] font-medium text-white/90 mt-1">Free Delivery nearby</p>
-               </div>
-               <img src={product.images?.[0] || ""} className="w-16 h-16 rounded-xl object-cover border-2 border-white/20 shadow-sm ml-2 shrink-0" />
-            </Link>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Trending Traders */}
-      <div className="px-0 mb-6">
-        <div className="flex justify-between items-end mb-3 px-5">
-          <h2 className="text-sm font-bold text-gray-800">Trending Traders</h2>
-          <span className="text-green-600 text-[11px] font-bold">See All</span>
+      {Object.keys(SELLERS).length > 0 && (
+        <div className="px-0 mb-6">
+          <div className="flex justify-between items-end mb-3 px-5">
+            <h2 className="text-sm font-bold text-gray-800">Trending Traders</h2>
+            <span className="text-green-600 text-[11px] font-bold">See All</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar px-5 pb-2">
+             {(Object.values(SELLERS) as any[]).map(seller => {
+               const isBoosted = seller.id === 's1' && isS1Boosted;
+               return (
+                 <Link 
+                   to={`/shop/${seller.id}`} 
+                   key={seller.id} 
+                   className={`min-w-[124px] rounded-2xl p-3 border shadow-sm flex flex-col items-center shrink-0 transition-all ${
+                     isBoosted 
+                       ? 'bg-gradient-to-br from-amber-50 via-white to-amber-50/10 border-amber-300 ring-2 ring-amber-400/20 scale-105 shadow-md' 
+                       : 'bg-white border-gray-100'
+                   }`}
+                 >
+                   <div className="relative">
+                     <img 
+                       src={seller.logoUrl} 
+                       className={`w-14 h-14 rounded-full object-cover mb-2 border ${
+                         isBoosted ? 'border-amber-400 ring-2 ring-amber-400/20 animate-pulse' : 'border-gray-100'
+                       }`} 
+                     />
+                     {isBoosted && (
+                       <span className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-900 border border-white text-[7px] px-1 font-black rounded-full uppercase tracking-tighter shadow-sm">BOOSTED</span>
+                     )}
+                   </div>
+                   <div className="flex items-center gap-1 justify-center w-full">
+                     <h3 className="font-bold text-xs text-gray-800 text-center line-clamp-1">{seller.name}</h3>
+                     <VerificationBadge level={seller.verificationLevel} showText={true} showDetails={true} />
+                   </div>
+                   <p className="text-[10px] text-gray-500 mt-0.5">{seller.category} • {seller.location}</p>
+                 </Link>
+               );
+             })}
+          </div>
         </div>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar px-5 pb-2">
-           {(Object.values(SELLERS) as any[]).map(seller => {
-             const isBoosted = seller.id === 's1' && isS1Boosted;
-             return (
-               <Link 
-                 to={`/shop/${seller.id}`} 
-                 key={seller.id} 
-                 className={`min-w-[124px] rounded-2xl p-3 border shadow-sm flex flex-col items-center shrink-0 transition-all ${
-                   isBoosted 
-                     ? 'bg-gradient-to-br from-amber-50 via-white to-amber-50/10 border-amber-300 ring-2 ring-amber-400/20 scale-105 shadow-md' 
-                     : 'bg-white border-gray-100'
-                 }`}
-               >
-                 <div className="relative">
-                   <img 
-                     src={seller.logoUrl} 
-                     className={`w-14 h-14 rounded-full object-cover mb-2 border ${
-                       isBoosted ? 'border-amber-400 ring-2 ring-amber-400/20 animate-pulse' : 'border-gray-100'
-                     }`} 
-                   />
-                   {isBoosted && (
-                     <span className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-900 border border-white text-[7px] px-1 font-black rounded-full uppercase tracking-tighter shadow-sm">BOOSTED</span>
-                   )}
-                 </div>
-                 <div className="flex items-center gap-1 justify-center w-full">
-                   <h3 className="font-bold text-xs text-gray-800 text-center line-clamp-1">{seller.name}</h3>
-                   <VerificationBadge level={seller.verificationLevel} showText={true} showDetails={true} />
-                 </div>
-                 <p className="text-[10px] text-gray-500 mt-0.5">{seller.category} • {seller.location}</p>
-               </Link>
-             );
-           })}
-        </div>
-      </div>
+      )}
 
       {/* Local Business Sponsored Ads */}
       <div className="px-4 mb-6">
@@ -361,55 +380,45 @@ export default function Home() {
         </div>
         
         <div className="flex flex-col gap-3">
-          {/* Active custom merchant broadcasts published from Dashboard */}
-          {customBanners.map(banner => (
-             <div 
-               key={banner.id}
-               className={`p-4 rounded-3xl text-white shadow-md relative overflow-hidden flex items-center justify-between border transition-all duration-300 ${
-                  banner.theme === 'emerald' ? 'bg-gradient-to-r from-green-600 to-emerald-700 border-green-500' :
-                  banner.theme === 'sunset' ? 'bg-gradient-to-r from-orange-400 to-rose-500 border-orange-300' :
-                  banner.theme === 'indigo' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 border-indigo-400' :
-                  'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700'
-               }`}
-             >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
-                <div className="flex-1 pr-2">
-                   <div className="flex items-center gap-1">
-                      <span className="text-[7.5px] bg-white/20 text-white font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Promoted Partner</span>
-                      {banner.coupon && (
-                         <span className="text-[7.5px] bg-amber-500 text-slate-900 font-bold px-1.5 py-0.5 rounded font-mono">CODE: {banner.coupon}</span>
-                      )}
-                   </div>
-                   <h3 className="font-display font-black text-xs text-white mt-1.5">{banner.title}</h3>
-                   <p className="text-[10px] text-white/95 mt-0.5 leading-normal max-w-[210px] font-medium line-clamp-2">{banner.heading}</p>
-                   <div className="mt-2.5 flex items-center gap-1">
-                      <span className="bg-emerald-400 w-1.5 h-1.5 rounded-full animate-ping"></span>
-                      <span className="text-[9px] text-white/80 font-bold">100% Verified Local Stall</span>
-                   </div>
-                </div>
-                <div className="shrink-0">
-                   <img src={banner.imageUrl} className="w-16 h-16 rounded-2xl object-cover border-2 border-white/25 shadow-sm" />
-                </div>
+          {customBanners.length === 0 ? (
+             <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-3xl text-center border border-dashed border-gray-200">
+                <p className="text-xs text-gray-500 font-semibold mb-2">No Active Sponsored Banners</p>
+                <Link to="/advertise" className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] py-2 px-4 rounded-xl uppercase tracking-wider">
+                  Book Ad Campaign
+                </Link>
              </div>
-          ))}
-
-          {/* Standard system ad as fallback/secondary */}
-          <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 p-4 rounded-3xl text-white shadow-md relative overflow-hidden flex items-center justify-between border border-indigo-800">
-             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl pointer-events-none"></div>
-             <div className="flex-1">
-                <span className="text-[8px] bg-indigo-500/30 text-indigo-300 font-bold px-2 py-0.5 rounded uppercase tracking-wider">Promoted Advertiser</span>
-                <h3 className="font-display font-black text-sm mt-1.5 text-white">Simunye Farmers & Spares</h3>
-                <p className="text-[10px] text-slate-300 mt-1 leading-normal max-w-[200px]">30% off high-grade fertilizer & cabbage seeds this week only! Visit our store in Eveni Plaza.</p>
-                <div className="mt-2.5 flex items-center gap-1">
-                   <span className="bg-emerald-500 w-1.5 h-1.5 rounded-full"></span>
-                   <span className="text-[9px] text-slate-300 font-medium">Located 1.2 km away</span>
-                </div>
-             </div>
-             <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center justify-center p-1 font-mono hover:scale-105 transition-transform font-bold">
-                <span className="text-pink-400 font-black text-xs">30%</span>
-                <span className="text-[7px] text-slate-300 text-center leading-none mt-0.5">OFF SPARES</span>
-             </div>
-          </div>
+          ) : (
+            customBanners.map(banner => (
+              <div 
+                key={banner.id}
+                className={`p-4 rounded-3xl text-white shadow-md relative overflow-hidden flex items-center justify-between border transition-all duration-300 ${
+                   banner.theme === 'emerald' ? 'bg-gradient-to-r from-green-600 to-emerald-700 border-green-500' :
+                   banner.theme === 'sunset' ? 'bg-gradient-to-r from-orange-400 to-rose-500 border-orange-300' :
+                   banner.theme === 'indigo' ? 'bg-gradient-to-r from-indigo-500 to-purple-600 border-indigo-400' :
+                   'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700'
+                }`}
+              >
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
+                 <div className="flex-1 pr-2">
+                    <div className="flex items-center gap-1">
+                       <span className="text-[7.5px] bg-white/20 text-white font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Promoted Partner</span>
+                       {banner.coupon && (
+                          <span className="text-[7.5px] bg-amber-500 text-slate-900 font-bold px-1.5 py-0.5 rounded font-mono">CODE: {banner.coupon}</span>
+                       )}
+                    </div>
+                    <h3 className="font-display font-black text-xs text-white mt-1.5">{banner.title}</h3>
+                    <p className="text-[10px] text-white/95 mt-0.5 leading-normal max-w-[210px] font-medium line-clamp-2">{banner.heading}</p>
+                    <div className="mt-2.5 flex items-center gap-1">
+                       <span className="bg-emerald-400 w-1.5 h-1.5 rounded-full animate-ping"></span>
+                       <span className="text-[9px] text-white/80 font-bold">100% Verified Local Stall</span>
+                    </div>
+                 </div>
+                 <div className="shrink-0">
+                    <img src={banner.imageUrl} referrerPolicy="no-referrer" className="w-16 h-16 rounded-2xl object-cover border-2 border-white/25 shadow-sm" />
+                 </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

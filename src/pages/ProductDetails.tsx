@@ -540,7 +540,7 @@ export default function ProductDetails() {
                 </div>
                 <div>
                   <p className="text-xs font-black text-gray-800">Trader Direct Run</p>
-                  <p className="text-[9px] text-gray-500 leading-normal">Bulk stock dropped off directly by Sipho's farm team</p>
+                  <p className="text-[9px] text-gray-500 leading-normal">Bulk stock dropped off directly by Store's farm team</p>
                 </div>
               </div>
               <div className="text-right">
@@ -965,7 +965,7 @@ export default function ProductDetails() {
                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-xs shrink-0 mt-0.5">S</div>
                 <div className="flex-1">
                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-800">Sipho</span>
+                      <span className="text-xs font-bold text-gray-800">John</span>
                       <span className="text-[10px] text-gray-500">· 2h ago</span>
                    </div>
                    <div className="flex items-center text-yellow-400 my-0.5">
