@@ -24,7 +24,11 @@ import {
   Sparkles,
   QrCode,
   Scan,
-  CreditCard
+  CreditCard,
+  Gift,
+  Share2,
+  Copy,
+  MessageCircle
 } from 'lucide-react';
 import { useState, FormEvent, useEffect } from 'react';
 import { db } from '../lib/firebase';
@@ -250,6 +254,32 @@ export default function Wallet() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [targetNumber, setTargetNumber] = useState('');
   
+  // Buyer Referral Program States
+  const [buyerReferralCode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_buyer_referral_code');
+      if (saved) return saved;
+      const gen = `buyer-${Math.floor(1000 + Math.random() * 9000)}`;
+      localStorage.setItem('emakethe_buyer_referral_code', gen);
+      return gen;
+    } catch { return 'buyer-3910'; }
+  });
+  const [friendReferralInput, setFriendReferralInput] = useState(() => {
+    try {
+      return localStorage.getItem('emakethe_buyer_applied_referral') || '';
+    } catch { return ''; }
+  });
+  const [copyingBuyerLink, setCopyingBuyerLink] = useState(false);
+  const [referredFriends, setReferredFriends] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_referred_friends');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [simulatedFriendName, setSimulatedFriendName] = useState('');
+  const [isSimulatingFriendPurchase, setIsSimulatingFriendPurchase] = useState(false);
+  const [buyerReferralAlert, setBuyerReferralAlert] = useState('');
+  
   // Custom Interactive MoMo Sandbox inputs
   const [p2pAmount, setP2pAmount] = useState('50');
   const [p2pPhone, setP2pPhone] = useState('');
@@ -286,28 +316,7 @@ export default function Wallet() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'card-1',
-        brand: 'Visa',
-        number: '•••• •••• •••• 4242',
-        holder: 'John Doe',
-        expiry: '12/28',
-        cvv: '123',
-        isDefault: true,
-        addedAt: '2026-01-10'
-      },
-      {
-        id: 'card-2',
-        brand: 'Mastercard',
-        number: '•••• •••• •••• 8899',
-        holder: 'Myati Trading Enterprise',
-        expiry: '09/27',
-        cvv: '456',
-        isDefault: false,
-        addedAt: '2026-03-15'
-      }
-    ];
+    return [];
   });
 
   const [oneClickCheckout, setOneClickCheckout] = useState<boolean>(() => {
@@ -320,35 +329,7 @@ export default function Wallet() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      {
-        id: 'sub-1',
-        name: 'Eswatini Agricultural Wholesalers Premium',
-        amount: 150.00,
-        frequency: 'Monthly',
-        nextBilling: '2026-07-15',
-        status: 'Active',
-        cardId: 'card-1'
-      },
-      {
-        id: 'sub-2',
-        name: 'MTN Business Fiber Lease Backup',
-        amount: 890.00,
-        frequency: 'Monthly',
-        nextBilling: '2026-07-20',
-        status: 'Active',
-        cardId: 'card-1'
-      },
-      {
-        id: 'sub-3',
-        name: 'eMakethe Vendor Priority Placement',
-        amount: 45.00,
-        frequency: 'Weekly',
-        nextBilling: '2026-07-01',
-        status: 'Paused',
-        cardId: 'card-2'
-      }
-    ];
+    return [];
   });
 
   // State to manage card inputs
@@ -1007,6 +988,198 @@ export default function Wallet() {
                     </p>
                  </div>
               </div>
+
+              {/* BUYER REFERRAL SECTION */}
+              <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-100/40 p-5 rounded-3xl border border-purple-100 shadow-sm flex flex-col gap-4 mb-4">
+                 <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-purple-600 rounded-2xl text-white shadow-md shrink-0">
+                       <Gift size={20} className="animate-pulse animate-bounce text-white" />
+                    </div>
+                    <div>
+                       <h4 className="font-bold text-xs uppercase tracking-wider text-purple-900">🎁 Invite Friends, Earn MoMo Cash!</h4>
+                       <p className="text-[10.5px] text-purple-700/90 leading-relaxed font-semibold mt-0.5">
+                          Share the love of secure Swazi local trade! When a friend registers and makes their first purchase, you get <span className="font-bold text-purple-900">E 50.00 MoMo Cash</span> credited directly to your wallet, and they get <span className="font-bold text-purple-900">E 20.00 discount</span> on their first order!
+                       </p>
+                    </div>
+                 </div>
+
+                 {buyerReferralAlert && (
+                    <div className="bg-purple-600 text-white text-[10.5px] font-bold px-3.5 py-2.5 rounded-2xl shadow-inner flex justify-between items-center animate-bounce">
+                       <span>{buyerReferralAlert}</span>
+                       <button onClick={() => setBuyerReferralAlert('')} className="text-white hover:text-purple-200 font-bold font-mono">×</button>
+                    </div>
+                 )}
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Your Invite Code block */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-purple-100/80 flex flex-col justify-between">
+                       <div>
+                          <span className="text-[8px] font-black text-purple-700 uppercase tracking-widest block">Your Referral Link / Code</span>
+                          <span className="text-xs font-black font-mono text-slate-800 mt-1 block">{buyerReferralCode}</span>
+                       </div>
+                       <button 
+                         onClick={() => {
+                           navigator.clipboard.writeText(`${window.location.origin}/wallet?ref=${buyerReferralCode}`);
+                           setCopyingBuyerLink(true);
+                           setBuyerReferralAlert("🎉 Referral link copied! Share it on WhatsApp or SMS.");
+                           setTimeout(() => setCopyingBuyerLink(false), 2000);
+                         }}
+                         className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[9px] uppercase px-3 py-1.5 rounded-xl transition-all active:scale-95 mt-2 text-center block w-full cursor-pointer"
+                       >
+                          {copyingBuyerLink ? "Copied! ✓" : "Copy Invitation Link"}
+                       </button>
+                    </div>
+
+                    {/* Friend referral code input */}
+                    <div className="bg-white p-3.5 rounded-2xl border border-purple-100/80 flex flex-col justify-between">
+                       <div>
+                          <span className="text-[8px] font-black text-purple-700 uppercase tracking-widest block">Enter Friend's Referral Code</span>
+                          <input 
+                            type="text" 
+                            value={friendReferralInput}
+                            onChange={(e) => setFriendReferralInput(e.target.value)}
+                            placeholder="e.g. buyer-1234"
+                            className="text-xs font-bold font-mono text-slate-800 border-b border-gray-200 outline-none w-full py-1 mt-1 focus:border-purple-500 placeholder-slate-300 bg-transparent"
+                          />
+                       </div>
+                       <button 
+                         onClick={() => {
+                           if (!friendReferralInput.trim()) {
+                             alert("Please enter a valid code.");
+                             return;
+                           }
+                           const code = friendReferralInput.trim();
+                           localStorage.setItem('emakethe_buyer_applied_referral', code);
+                           setBuyerReferralAlert(`🎉 Code "${code}" applied! You unlocked E 20.00 off on your next purchase!`);
+                         }}
+                         className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-[9px] uppercase px-3 py-1.5 rounded-xl transition-all active:scale-95 mt-2 cursor-pointer"
+                       >
+                          Apply Code
+                       </button>
+                    </div>
+                 </div>
+
+                 {/* Precompiled WhatsApp promoter */}
+                 <button 
+                   onClick={() => {
+                     const msg = `Molo! 🇸🇿 Discover eMakethe, the safest online marketplace in Swaziland with MTN MoMo payments & secure delivery tracking. Use my link to register and instantly unlock E 20.00 off your first purchase: ${window.location.origin}/wallet?ref=${buyerReferralCode}`;
+                     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                   }}
+                   className="w-full bg-[#25D366] hover:bg-green-600 text-white text-[10px] uppercase font-black py-2.5 px-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                 >
+                    <MessageCircle size={14} className="shrink-0 text-white fill-white/20" />
+                    <span>Share Referral Link on WhatsApp</span>
+                 </button>
+
+                 {/* Sandbox simulator panel */}
+                 <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                       <span className="text-[9px] font-black uppercase tracking-wider text-purple-400 font-mono">⚡ Buyers Live Simulator</span>
+                       <span className="bg-purple-950 text-purple-300 text-[7px] px-1.5 py-0.5 rounded border border-purple-500/20 font-mono uppercase font-black">Interactive</span>
+                    </div>
+                    <p className="text-[9.5px] text-slate-300 leading-snug font-sans">
+                       Simulate a friend joining using your link and checking out. Experience the real-time split payment wallet payout!
+                    </p>
+                    <div className="flex gap-2 mt-1">
+                       <input 
+                         type="text" 
+                         value={simulatedFriendName}
+                         onChange={(e) => setSimulatedFriendName(e.target.value)}
+                         placeholder="Friend's Name (e.g. Sipho)" 
+                         className="flex-1 bg-slate-950 border border-slate-800 text-[11px] font-bold text-white px-3 py-2 rounded-xl outline-none focus:border-purple-500 placeholder-slate-600 font-sans"
+                       />
+                       <button 
+                         onClick={() => {
+                           if (!simulatedFriendName.trim()) {
+                             alert("Please enter your friend's name to simulate!");
+                             return;
+                           }
+                           setIsSimulatingFriendPurchase(true);
+                           const name = simulatedFriendName.trim();
+                           
+                           setTimeout(() => {
+                             // 1. Credit wallet balance +50
+                             setBalance(prev => prev + 50.00);
+                             
+                             // 2. Add transaction
+                             const newTx: Transaction = {
+                               id: `tx-${Math.floor(1000 + Math.random() * 9000)}`,
+                               type: 'Referral Payout',
+                               detail: `Friend: ${name} (First Purchase)`,
+                               provider: 'eMakethe Reward',
+                               date: 'Just now',
+                               amount: 50.00,
+                               isPositive: true,
+                               status: 'Completed'
+                              };
+                              setTransactions(prev => [newTx, ...prev]);
+
+                              // 3. Update referred list
+                              const updatedFriends = [
+                                ...referredFriends,
+                                { id: `f-${Date.now()}`, name: name, date: new Date().toLocaleDateString(), status: 'first_purchase_completed', reward: 'E 50.00 Credit' }
+                              ];
+                              setReferredFriends(updatedFriends);
+                              localStorage.setItem('emakethe_referred_friends', JSON.stringify(updatedFriends));
+
+                              setSimulatedFriendName('');
+                              setIsSimulatingFriendPurchase(false);
+                              setBuyerReferralAlert(`🎉 Siyabonga! Simulating "${name}" completing their first purchase. E 50.00 has been credited to your e-Wallet balance!`);
+                            }, 1200);
+                          }}
+                          disabled={isSimulatingFriendPurchase}
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black px-3 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                           {isSimulatingFriendPurchase ? (
+                             <>
+                               <Loader2 size={10} className="animate-spin" />
+                               <span>Crediting...</span>
+                             </>
+                           ) : (
+                             <span>First Purchase</span>
+                           )}
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* Referred friends list logs */}
+                  <div className="bg-white/45 p-3 rounded-2xl border border-purple-100 font-sans">
+                     <div className="flex justify-between items-center mb-2">
+                        <span className="text-[9px] font-black text-slate-700 uppercase tracking-wide">Successfully Invited Friends ({referredFriends.length})</span>
+                        <button 
+                          onClick={() => {
+                            localStorage.setItem('emakethe_referred_friends', JSON.stringify([]));
+                            setReferredFriends([]);
+                          }}
+                          className="text-[8px] font-bold text-gray-400 hover:text-red-500 uppercase cursor-pointer"
+                        >
+                           Reset
+                        </button>
+                     </div>
+
+                     <div className="flex flex-col gap-1.5">
+                        {referredFriends.map((friend) => (
+                           <div key={friend.id} className="bg-white/80 p-2.5 rounded-xl border border-purple-50/70 flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-2">
+                                 <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[10px]">
+                                    👤
+                                 </div>
+                                 <div>
+                                    <p className="font-extrabold text-[11px] text-gray-800 leading-none">{friend.name}</p>
+                                    <p className="text-[8px] text-gray-400 mt-0.5">Invited: {friend.date}</p>
+                                 </div>
+                              </div>
+                              <div className="text-right text-xs">
+                                 <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${friend.status === 'first_purchase_completed' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-500'}`}>
+                                    {friend.status === 'first_purchase_completed' ? 'Purchase Active' : 'Joined'}
+                                 </span>
+                                 <span className="text-[8.5px] font-mono font-black text-purple-700 block mt-0.5">{friend.reward}</span>
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               </div>
 
               {/* Transactions log */}
               <div>

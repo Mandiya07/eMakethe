@@ -1,17 +1,17 @@
-import { Settings, Plus, Package, DollarSign, TrendingUp, Bell, MapPin, Truck, CheckCircle2, UserCheck, X, Navigation, Sparkles, MessageSquare, Image as ImageIcon, Megaphone, ShieldAlert, Fingerprint, Lock, Coins, Award, Info, FileText, Store, Phone, ShieldCheck, BarChart3, Palette } from 'lucide-react';
+import { Settings, Plus, Package, DollarSign, TrendingUp, Bell, MapPin, Truck, CheckCircle2, UserCheck, X, Navigation, Sparkles, MessageSquare, Image as ImageIcon, Megaphone, ShieldAlert, Fingerprint, Lock, Coins, Award, Info, FileText, Store, Phone, ShieldCheck, BarChart3, Palette, Share2, Copy, MessageCircle, Send, ThumbsUp, Gift } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { SELLERS, PRODUCTS, CATEGORIES, addProductToStorage } from '../data/mockData';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VerificationBadge } from '../components/VerificationBadge';
-import { db } from '../lib/firebase';
-import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { addDoc, collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useFirebase } from '../components/FirebaseProvider';
 import { NotificationsPopover, NotificationItem } from '../components/NotificationsPopover';
 
 export default function SellerDashboard() {
   const navigate = useNavigate();
-  const { sellers: firebaseSellers, products: firebaseProducts } = useFirebase();
+  const { sellers: firebaseSellers, products: firebaseProducts, categories } = useFirebase();
+
   const PRODUCTS = firebaseProducts;
   const SELLERS = firebaseSellers.reduce((acc, s) => ({...acc, [s.id]: s}), {} as Record<string, any>);
   
@@ -77,7 +77,7 @@ export default function SellerDashboard() {
   }, []);
   
   // Dynamic monetization states matching Admin and User requests
-  const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'products' | 'ai-coach' | 'ads' | 'security' | 'premium_hub' | 'whatsapp_setup'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'products' | 'ai-coach' | 'ads' | 'security' | 'premium_hub' | 'whatsapp_setup' | 'referral_program'>('analytics');
   const [shopTier, setShopTier] = useState<'basic' | 'premium' | 'business' | 'service_pro'>(() => {
     try {
       const saved = localStorage.getItem('emakethe_shop_tier');
@@ -141,7 +141,34 @@ export default function SellerDashboard() {
     }
   };
   const [isDigitalToolsActive, setIsDigitalToolsActive] = useState(false); // Digital services / business tools for traders
-  const [merchantBalance, setMerchantBalance] = useState(380.00); // Merchant in-app digital wallet
+  const [merchantBalance, setMerchantBalance] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_merchant_balance');
+      if (saved) return parseFloat(saved);
+      localStorage.setItem('emakethe_merchant_balance', '380.00');
+      return 380.00;
+    } catch { return 380.00; }
+  });
+  
+  useEffect(() => {
+    try {
+      localStorage.setItem('emakethe_merchant_balance', merchantBalance.toFixed(2));
+    } catch (e) {}
+  }, [merchantBalance]);
+
+  const [copyingShopLink, setCopyingShopLink] = useState(false);
+  const [copyingReferralCode, setCopyingReferralCode] = useState(false);
+  const [simulatedRefName, setSimulatedRefName] = useState('');
+  const [simulatingJoin, setSimulatingJoin] = useState(false);
+  const [referredSellers, setReferredSellers] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('emakethe_referral_rewards');
+      return saved ? JSON.parse(saved) : [
+        { refereeId: 'referee-1', refereeName: 'Swazi Honey Harvest', rewards: ['Featured listing', '30 Days Premium', 'E 100 Ad Credit'], date: '06/20/2026' },
+        { refereeId: 'referee-2', refereeName: 'Mbabane Woodworks', rewards: ['Featured listing', '30 Days Premium', 'E 100 Ad Credit'], date: '06/22/2026' }
+      ];
+    } catch { return []; }
+  });
   const [activePromotions, setActivePromotions] = useState<{ [key: string]: boolean }>({
     featured: false,
     sponsored: false,
@@ -291,6 +318,32 @@ export default function SellerDashboard() {
 
   const [notificationMsg, setNotificationMsg] = useState('');
 
+  const handleCopySellerShopLink = () => {
+    setCopyingShopLink(true);
+    const shopUrl = `${window.location.origin}/shop/${seller.id}`;
+    navigator.clipboard.writeText(shopUrl);
+    alert(`Your eMakethe storefront link was copied! Share this with your customers:\n${shopUrl}`);
+    setTimeout(() => setCopyingShopLink(false), 2000);
+  };
+
+  const handleShareSellerShop = (platform: "whatsapp" | "facebook" | "sms") => {
+    const shopUrl = `${window.location.origin}/shop/${seller.id}`;
+    const shareText = `Explore my store "${seller.name}" on eMakethe, Eswatini! Shop our local products securely via MTN MoMo: ${shopUrl}`;
+    let shareUrl = "";
+    if (platform === "whatsapp") {
+      shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    } else if (platform === "sms") {
+      shareUrl = `sms:?body=${encodeURIComponent(shareText)}`;
+    } else {
+      shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shopUrl)}`;
+    }
+    if (platform === "sms") {
+      window.location.href = shareUrl;
+    } else {
+      window.open(shareUrl, "_blank");
+    }
+  };
+
   const handleSimulateNotification = (type: string) => {
     let text = "";
     let iconSymbol = "🔔";
@@ -432,7 +485,7 @@ export default function SellerDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userPrompt: productAiPrompt || productTitle || "Local Cabbage Harvest",
-          category: CATEGORIES.find(c => c.id === newProductCategory)?.name || "Agriculture",
+          category: categories.find(c => c.id === newProductCategory)?.name || "Agriculture",
           subcategory: newProductSubcategory,
           basePrice: productPrice
         })
@@ -500,7 +553,7 @@ export default function SellerDashboard() {
         </div>
       </div>
 
-      <div className="px-4 py-3 bg-white mb-4 shadow-sm border-b border-gray-100 flex md:grid md:grid-cols-4 lg:grid-cols-8 gap-2.5 overflow-x-auto md:overflow-visible no-scrollbar w-full">
+      <div className="px-4 py-3 bg-white mb-4 shadow-sm border-b border-gray-100 flex md:grid md:grid-cols-3 lg:grid-cols-9 gap-2.5 overflow-x-auto md:overflow-visible no-scrollbar w-full">
         <button 
           onClick={() => setActiveTab('premium_hub')}
           className={`min-w-[155px] md:min-w-0 md:w-full flex flex-row md:flex-col items-center justify-center text-center gap-1.5 md:gap-1 py-2.5 px-3 md:py-3.5 md:px-1 rounded-xl text-xs sm:text-xs md:text-[11px] lg:text-xs font-black tracking-wide whitespace-nowrap md:whitespace-normal transition-all shadow-sm shrink-0 hover:scale-[1.01] ${activeTab === 'premium_hub' ? 'bg-amber-600 text-white shadow-amber-600/10' : 'bg-amber-50 text-amber-700 hover:bg-amber-100/50'}`}
@@ -558,6 +611,13 @@ export default function SellerDashboard() {
         >
           <MessageSquare className="text-[#25D366] fill-[#25D366]/20 w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" />
           <span>WhatsApp</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('referral_program')}
+          className={`min-w-[145px] md:min-w-0 md:w-full flex flex-row md:flex-col items-center justify-center text-center gap-1.5 md:gap-1 py-2.5 px-3 md:py-3.5 md:px-1 rounded-xl text-xs sm:text-xs md:text-[11px] lg:text-xs font-black tracking-wide whitespace-nowrap md:whitespace-normal transition-all shadow-sm shrink-0 hover:scale-[1.01] ${activeTab === 'referral_program' ? 'bg-purple-600 text-white shadow-purple-600/10' : 'bg-purple-50 text-purple-700 hover:bg-purple-100/50'}`}
+        >
+          <Gift className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0 animate-pulse text-purple-600 group-hover:text-white" />
+          <span>Referral Program</span>
         </button>
       </div>
 
@@ -1737,6 +1797,81 @@ export default function SellerDashboard() {
                </button>
             </div>
 
+            {/* Free Customer Invitation & Shop Promoter Card */}
+            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-3xl p-5 shadow-md flex flex-col gap-4">
+               <div className="flex items-start gap-3">
+                  <div className="p-2.5 bg-white/10 rounded-2xl text-white shadow-inner shrink-0">
+                     <Share2 size={20} className="animate-pulse" />
+                  </div>
+                  <div>
+                     <h4 className="font-display font-black text-sm uppercase tracking-wider text-left">Free Customer Invitation Hub</h4>
+                     <p className="text-[10.5px] text-indigo-100 leading-relaxed font-semibold text-left">
+                        Siyabonga! Every time you share your store, you invite customers to buy directly from you while growing the organic eMakethe ecosystem. No ad fees!
+                     </p>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-2.5 font-sans">
+                  {/* Share Store via WhatsApp */}
+                  <button 
+                    onClick={() => handleShareSellerShop("whatsapp")}
+                    className="flex items-center gap-2.5 p-3 bg-white/10 hover:bg-white/15 rounded-2xl text-left transition-all active:scale-[0.98] group cursor-pointer border border-white/5"
+                  >
+                     <div className="w-8 h-8 rounded-xl bg-green-500 text-white flex items-center justify-center shrink-0">
+                        <MessageCircle size={15} />
+                     </div>
+                     <div className="leading-tight">
+                        <p className="text-[11px] font-extrabold text-white">Share on WhatsApp</p>
+                        <p className="text-[9px] text-indigo-100/75">Group or Status</p>
+                     </div>
+                  </button>
+
+                  {/* Share Store via Facebook */}
+                  <button 
+                    onClick={() => handleShareSellerShop("facebook")}
+                    className="flex items-center gap-2.5 p-3 bg-white/10 hover:bg-white/15 rounded-2xl text-left transition-all active:scale-[0.98] group cursor-pointer border border-white/5"
+                  >
+                     <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+                        <ThumbsUp size={15} />
+                     </div>
+                     <div className="leading-tight">
+                        <p className="text-[11px] font-extrabold text-white">Post to Facebook</p>
+                        <p className="text-[9px] text-indigo-100/75">Community Forums</p>
+                      </div>
+                  </button>
+
+                  {/* Share Store via SMS */}
+                  <button 
+                    onClick={() => handleShareSellerShop("sms")}
+                    className="flex items-center gap-2.5 p-3 bg-white/10 hover:bg-white/15 rounded-2xl text-left transition-all active:scale-[0.98] group cursor-pointer border border-white/5"
+                  >
+                     <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                        <Send size={15} />
+                     </div>
+                     <div className="leading-tight">
+                        <p className="text-[11px] font-extrabold text-white">Send SMS Invite</p>
+                        <p className="text-[9px] text-indigo-100/75">Text customers</p>
+                     </div>
+                  </button>
+
+                  {/* Copy Shop Link */}
+                  <button 
+                    onClick={handleCopySellerShopLink}
+                    className="flex items-center gap-2.5 p-3 bg-white/10 hover:bg-white/15 rounded-2xl text-left transition-all active:scale-[0.98] group cursor-pointer border border-white/5"
+                  >
+                     <div className="w-8 h-8 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
+                        <Copy size={15} />
+                     </div>
+                     <div className="leading-tight">
+                        <p className="text-[11px] font-extrabold text-white">
+                          {copyingShopLink ? "Copied! ✓" : "Copy Shop Link"}
+                        </p>
+                        <p className="text-[9px] text-indigo-100/75">Paste anywhere</p>
+                     </div>
+                  </button>
+               </div>
+            </div>
+
             {/* SUITE ACTIONS TABS */}
             <div className="flex flex-col gap-6">
 
@@ -2675,6 +2810,223 @@ export default function SellerDashboard() {
              </div>
           </div>
         )}
+
+        {activeTab === 'referral_program' && (
+          <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+             
+             {/* Header card with purple/indigo theme */}
+             <div className="bg-gradient-to-br from-purple-700 via-indigo-650 to-indigo-850 text-white p-5 rounded-3xl shadow-md flex items-start gap-4">
+               <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+                 <Gift size={24} className="text-white animate-bounce" />
+               </div>
+               <div>
+                 <h3 className="font-display font-black text-lg mb-1 uppercase tracking-tight">
+                    Trader Referral Program
+                 </h3>
+                 <p className="text-[11px] text-purple-100 leading-relaxed font-semibold">
+                    Invite another trader to join eMakethe! When that trader registers and lists products, we reward you with exclusive premium benefits. Help us digitize local markets with zero ad costs!
+                 </p>
+               </div>
+             </div>
+
+             {/* Unlocked Rewards Overview Grid */}
+             <div className="grid grid-cols-3 gap-3">
+               <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-3xs flex flex-col items-center text-center">
+                 <div className="w-9 h-9 rounded-full bg-pink-50 text-pink-600 flex items-center justify-center mb-1.5"><Megaphone size={16} /></div>
+                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Ad Credits</span>
+                 <p className="text-base font-black font-mono text-gray-800 mt-0.5">E {(referredSellers.length * 100).toFixed(2)}</p>
+                 <span className="text-[8.5px] text-green-600 font-bold mt-0.5">Earned &bull; Active</span>
+               </div>
+               <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-3xs flex flex-col items-center text-center">
+                 <div className="w-9 h-9 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5"><Award size={16} /></div>
+                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Premium Days</span>
+                 <p className="text-base font-black font-mono text-gray-800 mt-0.5">+{referredSellers.length * 30} Days</p>
+                 <span className="text-[8.5px] text-purple-600 font-bold mt-0.5">Free Access</span>
+               </div>
+               <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-3xs flex flex-col items-center text-center">
+                 <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-1.5"><Sparkles size={16} /></div>
+                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Featured Slots</span>
+                 <p className="text-base font-black font-mono text-gray-800 mt-0.5">{referredSellers.length} Slots</p>
+                 <span className="text-[8.5px] text-indigo-600 font-bold mt-0.5">Top-Rank Search</span>
+               </div>
+             </div>
+
+             {/* Invite Panel & Share */}
+             <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100/85 flex flex-col gap-4">
+                <div>
+                   <h4 className="font-bold text-xs text-gray-800 uppercase tracking-widest flex items-center gap-1.5">
+                     📢 Your Custom Referral Hub
+                   </h4>
+                   <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                     Traders can type your code directly when registering, or use your quick invitation link to auto-apply your credentials!
+                   </p>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                   {/* Referral Code Box */}
+                   <div className="flex items-center justify-between p-3.5 bg-purple-50/50 rounded-2xl border border-purple-100/50">
+                      <div>
+                         <span className="text-[9px] text-purple-700 font-extrabold uppercase tracking-widest">Referral Code / Store ID:</span>
+                         <p className="text-xs font-black font-mono text-slate-800 mt-0.5">{seller?.id || 'seller-sipho'}</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(seller?.id || 'seller-sipho');
+                          setCopyingReferralCode(true);
+                          setTimeout(() => setCopyingReferralCode(false), 2000);
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-xl transition-all active:scale-95"
+                      >
+                         {copyingReferralCode ? "Copied! ✓" : "Copy Code"}
+                      </button>
+                   </div>
+
+                   {/* Referral Link Box */}
+                   <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-gray-100">
+                      <div className="min-w-0 flex-1 mr-3">
+                         <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Invite Registration Link:</span>
+                         <p className="text-[10px] font-mono text-gray-700 mt-0.5 truncate">{window.location.origin}/register-seller?ref={seller?.id || 'seller-sipho'}</p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/register-seller?ref=${seller?.id || 'seller-sipho'}`);
+                          setCopyingShopLink(true);
+                          setTimeout(() => setCopyingShopLink(false), 2000);
+                        }}
+                        className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-xl transition-all active:scale-95 shrink-0"
+                      >
+                         {copyingShopLink ? "Copied! ✓" : "Copy Link"}
+                      </button>
+                   </div>
+                </div>
+
+                {/* Precompiled WhatsApp Trader Promoter */}
+                <button 
+                  onClick={() => {
+                    const msg = `Molo! 🇸🇿 Grow your local street trade online! Build your digital storefront in under 2 minutes on eMakethe, receive secure MTN MoMo payments & courier matching with absolutely zero ad fees. Use my referral link: ${window.location.origin}/register-seller?ref=${seller?.id || 'seller-sipho'} or enter my trader code "${seller?.id || 'seller-sipho'}" to instantly unlock a Free Featured Listing slot & E 100 Ad Credit!`;
+                    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                  }}
+                  className="w-full bg-[#25D366] hover:bg-green-600 text-white text-xs font-bold py-3.5 px-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                   <MessageCircle size={15} />
+                   <span>Invite Traders on WhatsApp</span>
+                </button>
+             </div>
+
+             {/* Interactive Simulator Card */}
+             <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white p-5 rounded-3xl border border-slate-800 shadow-lg flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                   <h4 className="text-xs font-black uppercase tracking-widest text-purple-400 font-mono flex items-center gap-1.5">
+                     ⚡ Trader Referral Live Simulator
+                   </h4>
+                   <span className="bg-purple-900/50 text-purple-300 text-[8px] font-mono px-2 py-0.5 rounded border border-purple-500/20 uppercase font-black">Interactive Sandbox</span>
+                </div>
+                <p className="text-[10.5px] text-slate-300 leading-relaxed">
+                   Enter a simulated shop name below to experience how our real-time active trader rewards instantly credit your wallet, expand your featured slots, and extend premium status!
+                </p>
+
+                <div className="flex gap-2.5 mt-1">
+                   <input 
+                     type="text" 
+                     value={simulatedRefName}
+                     onChange={(e) => setSimulatedRefName(e.target.value)}
+                     placeholder="e.g. Mbabane Artisan Bakery" 
+                     className="flex-1 bg-slate-900 border border-slate-800 text-xs font-bold font-sans text-white px-3 py-2.5 rounded-xl outline-none focus:border-purple-500 placeholder-slate-500"
+                   />
+                   <button 
+                     onClick={async () => {
+                       if (!simulatedRefName.trim()) {
+                         alert("Please enter a simulated trader shop name.");
+                         return;
+                       }
+                       setSimulatingJoin(true);
+                       
+                       setTimeout(async () => {
+                         const cleanName = simulatedRefName.trim();
+                         const mockRefereeId = `sim-seller-${Date.now()}`;
+                         
+                         // Update local and firestore referredSellers
+                         const updated = [
+                           ...referredSellers,
+                           { refereeId: mockRefereeId, refereeName: cleanName, rewards: ['Featured listing', '30 Days Premium', 'E 100 Ad Credit'], date: new Date().toLocaleDateString() }
+                         ];
+                         setReferredSellers(updated);
+                         localStorage.setItem('emakethe_referral_rewards', JSON.stringify(updated));
+                         
+                         // Credit Wallet with E 100
+                         setMerchantBalance(prev => prev + 100.00);
+                         
+                         // Reset and notify
+                         setSimulatedRefName('');
+                         setSimulatingJoin(false);
+                         alert(`🎉 Siyabonga! Simulating active status for "${cleanName}". Your referral code was successfully redeemed!\n\nUnlocks applied:\n✓ E 100.00 Added to Merchant Wallet\n✓ +30 Premium Access Days Added\n✓ 1x Featured Listing Slot Unlocked`);
+                       }, 1200);
+                     }}
+                     disabled={simulatingJoin}
+                     className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-black px-4 py-2.5 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                   >
+                      {simulatingJoin ? (
+                        <>
+                          <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                          <span>Activating...</span>
+                        </>
+                      ) : (
+                        <span>Simulate Join</span>
+                      )}
+                   </button>
+                </div>
+             </div>
+
+             {/* Referred Traders List log */}
+             <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100/85">
+                <div className="flex justify-between items-center mb-3">
+                   <h4 className="text-xs font-black text-gray-800 uppercase tracking-widest flex items-center gap-1.5">
+                     📋 Successfully Invited Traders ({referredSellers.length})
+                   </h4>
+                   <button 
+                     onClick={() => {
+                       localStorage.setItem('emakethe_referral_rewards', JSON.stringify([]));
+                       setReferredSellers([]);
+                     }}
+                     className="text-[9px] text-gray-400 hover:text-red-500 font-extrabold uppercase font-mono cursor-pointer"
+                   >
+                     Clear History
+                   </button>
+                </div>
+
+                {referredSellers.length === 0 ? (
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100 text-center">
+                    <p className="text-gray-400 text-xs font-bold uppercase">No traders referred yet</p>
+                    <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">Share your WhatsApp link or invite local merchants around Mbabane or Manzini terminal spots to begin earning!</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                     {referredSellers.map((ref, idx) => (
+                       <div key={ref.refereeId || idx} className="bg-slate-50/50 p-3.5 rounded-2xl border border-gray-100/70 flex justify-between items-center">
+                          <div className="flex items-start gap-3">
+                             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-sm shrink-0">
+                               🏫
+                             </div>
+                             <div>
+                                <p className="font-extrabold text-xs text-gray-800 leading-snug">{ref.refereeName}</p>
+                                <p className="text-[9px] text-gray-400 mt-0.5">Invited: {ref.date} &bull; Verification Tier: <span className="text-green-600 font-bold uppercase">Active</span></p>
+                             </div>
+                          </div>
+
+                          <div className="text-right">
+                             <span className="text-[9px] font-black text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100 uppercase tracking-wider block leading-none">
+                               Unlocks Applied ✓
+                             </span>
+                             <span className="text-[8px] text-gray-400 mt-1 block font-mono">1x Feat · 30d Prem · E100</span>
+                          </div>
+                       </div>
+                     ))}
+                  </div>
+                )}
+             </div>
+
+          </div>
+        )}
       </div>
 
       {/* Add Product Modal */}
@@ -2760,14 +3112,14 @@ export default function SellerDashboard() {
                          onChange={e => {
                            const catId = e.target.value;
                            setNewProductCategory(catId);
-                           const categoryObj = CATEGORIES.find(c => c.id === catId);
+                           const categoryObj = categories.find(c => c.id === catId);
                            if (categoryObj && categoryObj.subcategories.length > 0) {
                              setNewProductSubcategory(categoryObj.subcategories[0]);
                            }
                          }}
                          className="w-full border border-gray-200 bg-gray-50 rounded-xl p-3.5 text-sm focus:border-green-500 focus:bg-white outlook-none font-medium appearance-none"
                        >
-                         {CATEGORIES.map(c => (
+                         {categories.map(c => (
                            <option key={c.id} value={c.id}>{c.name}</option>
                          ))}
                        </select>
@@ -2779,7 +3131,7 @@ export default function SellerDashboard() {
                          onChange={e => setNewProductSubcategory(e.target.value)}
                          className="w-full border border-gray-200 bg-gray-50 rounded-xl p-3.5 text-sm focus:border-green-500 focus:bg-white outlook-none font-medium appearance-none"
                        >
-                         {(CATEGORIES.find(c => c.id === newProductCategory)?.subcategories || []).map(sub => (
+                         {(categories.find(c => c.id === newProductCategory)?.subcategories || []).map(sub => (
                            <option key={sub} value={sub}>{sub}</option>
                          ))}
                        </select>

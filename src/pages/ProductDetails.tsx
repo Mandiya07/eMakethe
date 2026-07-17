@@ -233,17 +233,23 @@ export default function ProductDetails() {
     setTimeout(() => setCopyingLink(false), 2000);
   };
 
-  const handleShareSocial = (platform: "whatsapp" | "facebook") => {
+  const handleShareSocial = (platform: "whatsapp" | "facebook" | "sms") => {
     if (!seller || !product) return;
     const shareText = `Checkout "${product.name}" (priced at E ${product.price}) from ${seller.name} on eMakethe, Eswatini! ${window.location.href}`;
     let shareUrl = "";
     if (platform === "whatsapp") {
       shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    } else if (platform === "sms") {
+      shareUrl = `sms:?body=${encodeURIComponent(shareText)}`;
     } else {
       shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
     }
-    window.open(shareUrl, "_blank");
-    triggerToast(`Siyabonga! Opening ${platform === "whatsapp" ? "WhatsApp" : "Facebook"} to share!`);
+    if (platform === "sms") {
+      window.location.href = shareUrl;
+    } else {
+      window.open(shareUrl, "_blank");
+    }
+    triggerToast(`Siyabonga! Opening ${platform === "whatsapp" ? "WhatsApp" : platform === "sms" ? "SMS" : "Facebook"} to share!`);
     setShowShareModal(false);
   };
 
@@ -648,6 +654,21 @@ export default function ProductDetails() {
                     <div>
                        <p className="text-xs font-black text-gray-800">Share to Facebook Marketplace</p>
                        <p className="text-[10px] text-gray-550 leading-tight">Publish standard listing template into domestic buying forums.</p>
+                    </div>
+                 </button>
+
+                 {/* Share via SMS */}
+                 <button 
+                   type="button"
+                   onClick={() => handleShareSocial("sms")} 
+                   className="flex items-center gap-3 p-3.5 bg-gray-50 hover:bg-amber-50/45 rounded-2xl text-left border border-gray-100 transition-all active:scale-[0.98] group"
+                 >
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 group-hover:bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
+                       <Send size={16} />
+                    </div>
+                    <div>
+                       <p className="text-xs font-black text-gray-800">Share via SMS</p>
+                       <p className="text-[10px] text-gray-550 leading-tight">Send a fast text message with the product link directly to any mobile phone.</p>
                     </div>
                  </button>
               </div>

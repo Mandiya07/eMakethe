@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { motion, AnimatePresence } from 'motion/react';
-import { Product, Seller } from '../data/mockData';
+import { Product, Seller } from '../types';
 import { useFirebase } from '../components/FirebaseProvider';
 
 export default function Feed() {
@@ -437,7 +437,7 @@ export default function Feed() {
                             </span>
                             <span className="text-[10px] text-gray-400">({sel.reviews} reviews)</span>
                             <span className="text-[10px] bg-pink-50 text-pink-600 px-1.5 py-0.5 rounded font-bold font-sans">
-                              {isFollowed ? '119 followers' : '118 followers'}
+                              {isFollowed ? '1 follower' : '0 followers'}
                             </span>
                           </div>
                         </div>
@@ -587,10 +587,10 @@ export default function Feed() {
                     <div className="flex justify-between items-center px-4 py-2 border-b border-gray-50 text-[10px] text-gray-400 font-bold font-sans">
                       <span className="flex items-center gap-1 text-slate-700">
                         <ThumbsUp size={11} className="text-indigo-600 fill-indigo-200" />
-                        {isLiked ? 25 + idx : 24 + idx} Likes
+                        {isLiked ? 1 : 0} Likes
                       </span>
                       <span>
-                        {commentsAndPredefinedCount(product.id, idx)} Comments • {7 + idx * 3} Shares
+                        {commentsAndPredefinedCount(product.id, idx)} Comments • 0 Shares
                       </span>
                     </div>
 
@@ -647,21 +647,8 @@ export default function Feed() {
                           </div>
                         ))}
 
-                        {/* Pre-cached Default Demo Comment for Authenticity */}
-                        <div className="p-2.5 flex gap-2">
-                          <div className="w-6.5 h-6.5 rounded-full bg-amber-100 text-amber-700 font-bold flex items-center justify-center shrink-0 text-[10px] font-sans">N</div>
-                          <div className="flex-1">
-                            <div className="flex justify-between items-center mb-0.5">
-                              <span className="text-[10px] font-black text-gray-800">Nandi Dlamini</span>
-                              <span className="text-[8px] text-gray-400">1h ago</span>
-                            </div>
-                            <p className="text-[10px] text-gray-600 leading-normal font-semibold">
-                              Highly recommended harvest quality! Store was extremely helpful and payment via MoMo took 10 seconds.
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Interative Form to post comment */}
+                        {/* Pre-cached Default Demo Comment for Authenticity (REMOVED) */}
+                        {/* Interactive Form to post comment */}
                         {isCommentBoxActive && (
                           <form onSubmit={(e) => handleAddComment(product.id, e)} className="mt-1 flex flex-col gap-2 bg-white p-2.5 rounded-2xl border border-gray-100 shadow-sm animate-in fade-in duration-200">
                             <div className="flex gap-1.5">
@@ -761,8 +748,8 @@ function commentsAndPredefinedCount(id: string, idx: number): number {
     if (saved) {
       const parsed = JSON.parse(saved);
       const customArray = parsed[id] || [];
-      return 1 + customArray.length; // 1 represents the pre-cached comment
+      return customArray.length;
     }
   } catch {}
-  return 1;
+  return 0;
 }

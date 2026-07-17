@@ -1,24 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     match /sellers/{sellerId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn(); // Hardening needed later
     }
     
     match /products/{productId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     
     match /banners/{bannerId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     
     match /drivers/{driverId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     
     match /admins/{adminId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Categories should be read-only for now
     }
   }
 }

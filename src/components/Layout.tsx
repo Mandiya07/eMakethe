@@ -82,10 +82,18 @@ export default function Layout() {
             {/* Header branding with African Kente motif */}
             <div>
               <div className="h-1.5 w-full bg-[repeating-linear-gradient(45deg,#F59E0B,#F59E0B_8px,#10B981_8px,#10B981_16px,#EF4444_16px,#EF4444_24px)] rounded-t-full"></div>
-              <div className="pt-4">
-                <span className="text-[10px] tracking-widest font-black uppercase text-amber-500">Swaziland Express</span>
-                <h1 className="text-2xl font-black text-gray-900 leading-none mt-1">eMakethe</h1>
-                <p className="text-xs text-gray-400 mt-1.5">Universal commerce portal</p>
+              <div className="pt-4 flex items-center gap-3">
+                <img 
+                  src="/icon.jpg" 
+                  alt="eMakethe Logo" 
+                  className="w-12 h-12 rounded-xl object-contain bg-white p-1 shadow-sm border border-gray-100 shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+                <div>
+                  <span className="text-[10px] tracking-widest font-black uppercase text-amber-500">Swaziland Express</span>
+                  <h1 className="text-xl font-black text-gray-900 leading-none mt-0.5">eMakethe</h1>
+                  <p className="text-[10px] text-gray-400 mt-1">Universal portal</p>
+                </div>
               </div>
             </div>
 

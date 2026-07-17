@@ -19,6 +19,7 @@ import Checkout from './pages/Checkout';
 import DriverDashboard from './pages/DriverDashboard';
 import NearbyMap from './pages/NearbyMap';
 import AdminDashboard from './pages/AdminDashboard';
+import { AdminDebugger } from './components/AdminDebugger';
 import Advertise from './pages/Advertise';
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="register-seller" element={<RegisterSeller />} />
             <Route path="driver" element={<DriverDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin-debug" element={<AdminDebugger />} />
             <Route path="advertise" element={<Advertise />} />
           </Route>
           <Route path="/checkout/:id" element={<Checkout />} />

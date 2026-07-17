@@ -13,7 +13,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 async function check() {
-  const collectionsToPurge = ['sellers', 'products', 'banners', 'drivers', 'admins'];
+  const collectionsToPurge = ['sellers', 'products', 'banners', 'drivers', 'admins', 'promotions', 'categories', 'local-sponsors', 'wallet', 'ad_bookings'];
   for (const colName of collectionsToPurge) {
     const snap = await getDocs(collection(db, colName));
     console.log(`Collection ${colName} has ${snap.size} documents.`);

@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, MapPin, Star, MoreVertical, Heart, Phone, Truck, Wallet, Clock, CheckCircle2, X, Camera, Image as ImageIcon, Send, Check, ThumbsUp, Sparkles } from 'lucide-react';
+import { ArrowLeft, MessageCircle, MapPin, Star, MoreVertical, Heart, Phone, Truck, Wallet, Clock, CheckCircle2, X, Camera, Image as ImageIcon, Send, Check, ThumbsUp, Sparkles, Share2, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { useFirebase } from '../components/FirebaseProvider';
@@ -107,6 +107,35 @@ export default function Shop() {
   });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
+
+  const handleCopyLink = () => {
+    setCopyingLink(true);
+    navigator.clipboard.writeText(window.location.href);
+    triggerToast("eMakethe Shop link copied to clipboard! Siyabonga! 📋");
+    setTimeout(() => setCopyingLink(false), 2000);
+  };
+
+  const handleShareSocial = (platform: "whatsapp" | "facebook" | "sms") => {
+    if (!seller) return;
+    const shareText = `Explore "${seller.name}" on eMakethe, Eswatini! Sourcing quality products locally: ${window.location.href}`;
+    let shareUrl = "";
+    if (platform === "whatsapp") {
+      shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    } else if (platform === "sms") {
+      shareUrl = `sms:?body=${encodeURIComponent(shareText)}`;
+    } else {
+      shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
+    }
+    if (platform === "sms") {
+      window.location.href = shareUrl;
+    } else {
+      window.open(shareUrl, "_blank");
+    }
+    triggerToast(`Siyabonga! Opening ${platform === "whatsapp" ? "WhatsApp" : platform === "sms" ? "SMS" : "Facebook"} to share!`);
+    setShowShareModal(false);
+  };
   const [activeTab, setActiveTab] = useState<'products' | 'about' | 'reviews'>('products');
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
@@ -289,9 +318,12 @@ export default function Shop() {
         <Link to="/" className="absolute top-4 left-4 z-10 bg-white/20 backdrop-blur-md text-white p-2 rounded-full border border-white/30">
           <ArrowLeft size={20} />
         </Link>
-        <div className="absolute top-4 right-4 z-10 bg-white/20 backdrop-blur-md text-white p-2 rounded-full border border-white/30">
-          <MoreVertical size={20} />
-        </div>
+        <button 
+          onClick={() => setShowShareModal(true)}
+          className="absolute top-4 right-4 z-10 bg-white/20 backdrop-blur-md text-white p-2 rounded-full border border-white/30 cursor-pointer hover:bg-white/35"
+        >
+          <Share2 size={20} />
+        </button>
         <img src={seller.bannerUrl} alt="Cover" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
       </div>
@@ -377,6 +409,13 @@ export default function Shop() {
              >
                <MessageCircle size={14} />
                Chat Now
+             </button>
+             <button 
+               onClick={() => setShowShareModal(true)}
+               className="w-full bg-indigo-650 hover:bg-indigo-700 text-white font-bold py-2.5 px-2 rounded-xl flex items-center justify-center gap-1.5 shadow-sm text-xs active:scale-95 transition-transform"
+             >
+               <Share2 size={14} />
+               Share Shop & Invite Customers
              </button>
           </div>
         </div>
@@ -646,6 +685,94 @@ export default function Shop() {
           </div>
         )}
       </div>
+
+       {/* SHOP SHARING SELECTION MODAL */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4 w-full h-full max-w-md mx-auto">
+           <div className="bg-white w-full rounded-t-[36px] rounded-b-[24px] p-6 shadow-2xl animate-in slide-in-from-bottom flex flex-col z-50">
+              <div className="flex justify-between items-center mb-5">
+                 <div>
+                    <h3 className="font-black text-gray-800 flex items-center gap-1.5 text-base font-display">
+                       <Share2 className="text-indigo-600 animate-pulse" /> Share this Storefront
+                    </h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide font-mono mt-0.5">Invite Customers & Promote</p>
+                 </div>
+                 <button 
+                   type="button"
+                   onClick={() => setShowShareModal(false)} 
+                   className="bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors"
+                 >
+                    <X size={16} />
+                 </button>
+              </div>
+
+              <div className="flex flex-col gap-3.5 mb-2">
+                 {/* Copy Shop Link button */}
+                 <button 
+                   type="button"
+                   onClick={handleCopyLink} 
+                   className="flex items-center gap-3 p-3.5 bg-gray-50 hover:bg-indigo-50/45 rounded-2xl text-left border border-gray-100 transition-all active:scale-[0.98] group"
+                 >
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
+                       <Copy size={16} />
+                    </div>
+                    <div className="flex-1">
+                       <p className="text-xs font-black text-gray-800 flex items-center gap-1.5">
+                         Copy Shop Link
+                         {copyingLink && <span className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full uppercase">Copied ✓</span>}
+                       </p>
+                       <p className="text-[10px] text-gray-550 leading-tight">Copy this storefront link to paste inside chats or statuses.</p>
+                    </div>
+                 </button>
+
+                 {/* WhatsApp Group Share */}
+                 <button 
+                   type="button"
+                   onClick={() => handleShareSocial("whatsapp")} 
+                   className="flex items-center gap-3 p-3.5 bg-gray-50 hover:bg-green-50/45 rounded-2xl text-left border border-gray-100 transition-all active:scale-[0.98] group"
+                 >
+                    <div className="w-10 h-10 rounded-xl bg-green-50 group-hover:bg-green-100 text-green-600 flex items-center justify-center shrink-0 border border-green-100">
+                       <MessageCircle size={16} className="text-[#25D366]" />
+                    </div>
+                    <div>
+                       <p className="text-xs font-black text-gray-800">Share to WhatsApp Status / Group</p>
+                       <p className="text-[10px] text-gray-550 leading-tight">Post this Swazi storefront directly to your local family status feed.</p>
+                    </div>
+                 </button>
+
+                 {/* Facebook Community Groups */}
+                 <button 
+                   type="button"
+                   onClick={() => handleShareSocial("facebook")} 
+                   className="flex items-center gap-3 p-3.5 bg-gray-50 hover:bg-blue-50/45 rounded-2xl text-left border border-gray-100 transition-all active:scale-[0.98] group"
+                 >
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 group-hover:bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                       <ThumbsUp size={16} />
+                    </div>
+                    <div>
+                       <p className="text-xs font-black text-gray-800">Share to Facebook Communities</p>
+                       <p className="text-[10px] text-gray-550 leading-tight">Publish standard shop template into domestic buying forums.</p>
+                    </div>
+                 </button>
+
+                 {/* Share via SMS */}
+                 <button 
+                   type="button"
+                   onClick={() => handleShareSocial("sms")} 
+                   className="flex items-center gap-3 p-3.5 bg-gray-50 hover:bg-amber-50/45 rounded-2xl text-left border border-gray-100 transition-all active:scale-[0.98] group"
+                 >
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 group-hover:bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
+                       <Send size={16} />
+                    </div>
+                    <div>
+                       <p className="text-xs font-black text-gray-800">Share via SMS</p>
+                       <p className="text-[10px] text-gray-550 leading-tight">Send a fast text message with the shop link directly to any mobile phone.</p>
+                    </div>
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
 
       {showReviewModal && (
         <div className="fixed inset-x-0 bottom-0 top-0 z-50 flex items-end justify-center pointer-events-none p-4 pb-0 w-full h-full max-w-md mx-auto">

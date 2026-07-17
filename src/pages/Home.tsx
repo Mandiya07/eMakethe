@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Bell, MapPin, Store, Leaf, Pizza, Shirt, Wrench, Scissors, Car, Palette, Hammer, Home as HomeIcon, Smartphone, MoreHorizontal, X, Sparkles, Download, Layers } from 'lucide-react';
-import { CATEGORIES } from '../data/mockData';
 import { Link } from 'react-router-dom';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { useFirebase } from '../components/FirebaseProvider';
@@ -11,7 +10,7 @@ const IconMap: Record<string, any> = {
 };
 
 export default function Home() {
-  const { sellers, products, banners } = useFirebase();
+  const { sellers, products, banners, categories } = useFirebase();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   
@@ -90,7 +89,7 @@ export default function Home() {
     } catch { return false; }
   });
 
-  const activeCategoryObj = CATEGORIES.find(c => c.id === selectedCategory);
+  const activeCategoryObj = categories.find(c => c.id === selectedCategory);
 
   const filteredProducts = PRODUCTS.filter(product => {
     if (selectedCategory && product.categoryId !== selectedCategory) return false;
@@ -145,27 +144,35 @@ export default function Home() {
         
         <div className="px-4 pt-4">
           <div className="flex justify-between items-center mb-3">
-            <div className="flex flex-col">
-              <span className="text-[10px] tracking-widest font-black uppercase text-amber-300">Swaziland Express</span>
-              <span className="text-xl font-black tracking-tight font-display text-white">eMakethe</span>
-              <div className="flex items-center gap-2 mt-1">
-                 <Link to="/map" className="flex items-center gap-1 bg-white/15 hover:bg-white/20 px-2 py-0.5 rounded-full transition-colors">
-                   <MapPin size={11} className="text-amber-400" />
-                   <span className="font-extrabold text-[10px] text-gray-100">Mbabane, SZ &nbsp;›</span>
-                 </Link>
-                 <button 
-                   onClick={handleToggleLowData}
-                   className={`flex items-center gap-1 px-2 py-0.5 rounded-full transition-all active:scale-95 border ${
-                     lowDataMode 
-                       ? 'bg-amber-500 border-amber-300 text-slate-900 font-extrabold animate-pulse' 
-                       : 'bg-black/25 border-transparent text-gray-300 hover:bg-black/35'
-                   }`}
-                   title={lowDataMode ? "Low Data Mode: On" : "Low Data Mode: Off"}
-                 >
-                   <span className="font-black text-[9px] tracking-tight uppercase">
-                     {lowDataMode ? '● Low Data Active' : 'Low Data Mode'}
-                   </span>
-                 </button>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/icon.jpg" 
+                alt="eMakethe Logo" 
+                className="w-12 h-12 rounded-xl object-contain bg-white p-1.5 shadow-md border border-white/20 shrink-0"
+                referrerPolicy="no-referrer"
+              />
+              <div className="flex flex-col">
+                <span className="text-[10px] tracking-widest font-black uppercase text-amber-300">Swaziland Express</span>
+                <span className="text-xl font-black tracking-tight font-display text-white">eMakethe</span>
+                <div className="flex items-center gap-2 mt-1">
+                   <Link to="/map" className="flex items-center gap-1 bg-white/15 hover:bg-white/20 px-2 py-0.5 rounded-full transition-colors">
+                     <MapPin size={11} className="text-amber-400" />
+                     <span className="font-extrabold text-[10px] text-gray-100">Mbabane, SZ &nbsp;›</span>
+                   </Link>
+                   <button 
+                     onClick={handleToggleLowData}
+                     className={`flex items-center gap-1 px-2 py-0.5 rounded-full transition-all active:scale-95 border ${
+                       lowDataMode 
+                         ? 'bg-amber-500 border-amber-300 text-slate-900 font-extrabold animate-pulse' 
+                         : 'bg-black/25 border-transparent text-gray-300 hover:bg-black/35'
+                     }`}
+                     title={lowDataMode ? "Low Data Mode: On" : "Low Data Mode: Off"}
+                   >
+                     <span className="font-black text-[9px] tracking-tight uppercase">
+                       {lowDataMode ? '● Low Data Active' : 'Low Data Mode'}
+                     </span>
+                   </button>
+                </div>
               </div>
             </div>
             
@@ -195,7 +202,7 @@ export default function Home() {
           <Link to="/search" className="bg-white rounded-2xl flex items-center px-4 py-3 shadow-inner border border-gray-100 text-gray-550 hover:text-gray-700 transition-colors">
             <span className="flex-1 text-xs font-semibold">Search Mbabane fresh produce, tailors...</span>
             <span className="text-emerald-600 bg-emerald-50 p-1.5 rounded-full">
-              <svg xmlns="http://www.w3.org/2500/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
             </span>
           </Link>
         </div>
@@ -221,7 +228,7 @@ export default function Home() {
         </div>
         
         <div className="grid grid-cols-5 gap-y-4 gap-x-2">
-          {CATEGORIES.map(cat => {
+          {categories.map(cat => {
             const IconComponent = IconMap[cat.icon];
             const isSelected = selectedCategory === cat.id;
             return (
@@ -527,8 +534,8 @@ export default function Home() {
                  
                  {/* Social Stats */}
                  <div className="flex justify-between items-center px-4 py-2 text-[10px] text-gray-500 border-b border-gray-50 font-medium">
-                    <span className="flex items-center gap-1">👍 {24 + idx * 7} Likes</span>
-                    <span>{3 + idx * 2} Comments • {Math.max(1, 5 - idx)} Shares</span>
+                    <span className="flex items-center gap-1">👍 {0} Likes</span>
+                    <span>{0} Comments • {0} Shares</span>
                  </div>
  
                  {/* Social Actions */}

@@ -115,6 +115,13 @@ export default function Checkout() {
 
   if (!product || !seller) return <div className="p-10 text-center font-bold">Product or Seller not found</div>;
 
+  // Buyer Referral Discount State
+  const [buyerReferralCodeApplied, setBuyerReferralCodeApplied] = useState(() => {
+    try {
+      return localStorage.getItem('emakethe_buyer_applied_referral') || '';
+    } catch { return ''; }
+  });
+
   // Delivery Cost calculation
   const deliveryCosts = {
     pickup: 0,
@@ -124,7 +131,8 @@ export default function Checkout() {
   };
   const deliveryFee = deliveryCosts[deliveryMethod];
   const itemTotal = product.price;
-  const checkoutGrandTotal = itemTotal + deliveryFee;
+  const referralDiscount = buyerReferralCodeApplied ? 20.00 : 0;
+  const checkoutGrandTotal = Math.max(0, itemTotal + deliveryFee - referralDiscount);
 
   // Split calculations
   const walletDeduction = isSplitPayment ? Math.min(userWalletBalance, checkoutGrandTotal - 15) : 0;
@@ -243,6 +251,62 @@ export default function Checkout() {
         });
         localStorage.setItem('emakethe_customer_notifications', JSON.stringify(list));
         window.dispatchEvent(new Event('emakethe_notifications_updated'));
+
+        // Reward referral if code is applied
+        if (buyerReferralCodeApplied) {
+          try {
+            // Clear the applied code so they don't get the discount again
+            localStorage.removeItem('emakethe_buyer_applied_referral');
+            
+            // Add the friend to the referred list in localStorage
+            const friendsStr = localStorage.getItem('emakethe_referred_friends') || '[]';
+            const friends = JSON.parse(friendsStr);
+            friends.unshift({
+              id: `f-${Date.now()}`,
+              name: `Referred Friend (${buyerReferralCodeApplied})`,
+              date: new Date().toLocaleDateString(),
+              status: 'first_purchase_completed',
+              reward: 'E 50.00 Credit'
+            });
+            localStorage.setItem('emakethe_referred_friends', JSON.stringify(friends));
+
+            // Reward the referrer: add E 50.00 to balance & transaction
+            const referrerBalance = parseFloat(localStorage.getItem('emakethe_wallet_balance') || '0.00');
+            const updatedReferrerBalance = referrerBalance + 50.00;
+            localStorage.setItem('emakethe_wallet_balance', updatedReferrerBalance.toFixed(2));
+            window.dispatchEvent(new Event('emakethe_wallet_balance_changed'));
+
+            const referrerTxsStr = localStorage.getItem('emakethe_wallet_transactions') || '[]';
+            const referrerTxs = JSON.parse(referrerTxsStr);
+            referrerTxs.unshift({
+              id: `tx-ref-${Math.floor(1000 + Math.random() * 9000)}`,
+              type: 'Referral Payout',
+              detail: `Friend code: ${buyerReferralCodeApplied}`,
+              provider: 'eMakethe Reward',
+              date: 'Just now',
+              amount: 50.00,
+              isPositive: true,
+              status: 'Completed'
+            });
+            localStorage.setItem('emakethe_wallet_transactions', JSON.stringify(referrerTxs));
+
+            // Add notification
+            const currentNotificationsStr = localStorage.getItem('emakethe_customer_notifications') || '[]';
+            const currentList = JSON.parse(currentNotificationsStr);
+            currentList.unshift({
+              id: `nt-ref-${Math.floor(1000 + Math.random() * 9000)}`,
+              type: 'success',
+              title: '🎁 Referral Discount Claimed!',
+              message: `Siyabonga! You saved E 20.00 on your first purchase. Your friend (${buyerReferralCodeApplied}) has been credited E 50.00 in MoMo cash!`,
+              time: 'Just now',
+              read: false
+            });
+            localStorage.setItem('emakethe_customer_notifications', JSON.stringify(currentList));
+            window.dispatchEvent(new Event('emakethe_notifications_updated'));
+          } catch (err) {
+            console.warn("Non-blocking buyer referral reward processing error:", err);
+          }
+        }
 
       } catch (e) {
         console.warn('Error saving new escrow:', e);
@@ -1139,7 +1203,14 @@ export default function Checkout() {
          <div className="flex flex-col gap-1.5 px-1">
             <div className="flex justify-between items-center">
                <span className="text-gray-500 font-extrabold text-xs uppercase">Sum Grand Total:</span>
-               <span className="text-lg font-black text-green-600 font-mono">{activeProv.currency} {checkoutGrandTotal.toFixed(2)}</span>
+               <div className="text-right">
+                  <span className="text-lg font-black text-green-600 font-mono">{activeProv.currency} {checkoutGrandTotal.toFixed(2)}</span>
+                  {buyerReferralCodeApplied && (
+                     <span className="block text-[8.5px] text-purple-700 font-black bg-purple-50 px-2 py-0.5 rounded border border-purple-150 uppercase tracking-tight mt-0.5 animate-pulse">
+                        🎁 First Order Discount -E {referralDiscount.toFixed(2)}
+                     </span>
+                  )}
+               </div>
             </div>
             {paymentMode === 'momo' && mobileMoneyFee > 0 && (
                <div className="flex justify-between items-center text-[10px] text-gray-500 font-medium border-t border-gray-100 pt-1">

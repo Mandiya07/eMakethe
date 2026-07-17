@@ -32,6 +32,18 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
+  // Never intercept or cache development source files, hot-reload streams, or development environments
+  if (
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('hot-update') ||
+    self.location.hostname === 'localhost' ||
+    self.location.hostname.includes('127.0.0.1') ||
+    self.location.hostname.includes('ais-dev-')
+  ) {
+    return; // Pass through to network directly without caching
+  }
+  
   // For navigation requests (like reloading the home page), try network first so we always get the updated index.html
   if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(
