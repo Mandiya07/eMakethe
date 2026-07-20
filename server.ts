@@ -20,12 +20,13 @@ const LOCAL_CONTEXT = {
   ]
 };
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
 
-  // JSON Body parsing
-  app.use(express.json());
+// JSON Body parsing
+app.use(express.json());
+
+async function startServer() {
+  const PORT = 3000;
 
   // Lazy initialize GoogleGenAI client (robust startup guide)
   const getAiClient = () => {
@@ -303,24 +304,28 @@ Do not output JSON formats. Stand as a natural 24/7 support chat assistant.`;
   });
 
 
-  // --- VITE MIDDLEWARE SETUP ---
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+  // --- VITE MIDDLEWARE SETUP (Not needed on Vercel) ---
+  if (!process.env.VERCEL) {
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server successfully booted and listening on host 0.0.0.0 and port ${PORT}`);
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server successfully booted and listening on host 0.0.0.0 and port ${PORT}`);
-  });
 }
 
 startServer();
+
+export default app;
