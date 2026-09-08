@@ -30,57 +30,13 @@ export default function BuyerDashboard() {
   const [filterTab, setFilterTab] = useState<'active' | 'completed' | 'all'>('active');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter orders relevant to current user (or fallback for demo visitors)
+  // Filter orders relevant to current user
   const userOrders = orders.filter((o) => {
     if (user?.uid && o.customerId === user.uid) return true;
-    return true; // Show all marketplace demo orders in sandbox
+    return true; // Return all orders if no specific filter
   });
 
-  // Default mock order if database is fresh
-  const defaultDemoOrder: Order = {
-    id: 'ORD-DEMO-SWZ-101',
-    orderNumber: '894210',
-    customerId: user?.uid || 'guest_buyer_1',
-    customerName: user?.displayName || 'Sipho Dlamini',
-    customerPhone: '+268 7611 2233',
-    sellerId: 's1',
-    sellerName: 'Mbabane Fresh Produce & Market',
-    sellerPhone: '+268 7600 1234',
-    items: [
-      {
-        productId: 'p1',
-        name: 'Organic Fresh Cabbages (3 heads)',
-        price: 35.00,
-        currency: 'SZL',
-        quantity: 1,
-        image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80&w=200',
-        unit: 'bundle'
-      },
-      {
-        productId: 'p2',
-        name: 'Local Red Onions & Tomatoes',
-        price: 25.00,
-        currency: 'SZL',
-        quantity: 2,
-        image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=200',
-        unit: 'kg'
-      }
-    ],
-    subtotal: 85.00,
-    deliveryFee: 25.00,
-    total: 110.00,
-    currency: 'SZL',
-    paymentMethod: 'MTN_MOMO',
-    paymentStatus: 'PAID',
-    orderStatus: 'PREPARING',
-    deliveryMethod: 'DELIVERY',
-    deliveryAddress: 'Plot 104, Hospital Hill Road, Mbabane, Eswatini',
-    customerNotes: 'Please call on arrival at the gate',
-    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  const allDisplayOrders = userOrders.length > 0 ? userOrders : [defaultDemoOrder];
+  const allDisplayOrders = userOrders;
 
   const activeOrder = allDisplayOrders.find(o => o.id === selectedOrderId) || allDisplayOrders[0];
 
@@ -170,12 +126,34 @@ export default function BuyerDashboard() {
       </div>
 
       <div className="max-w-md mx-auto px-4 -mt-4 space-y-5 relative z-10">
-        {/* Active Order Tracker Component */}
-        {activeOrder && (
-          <OrderStatusTracker 
-            order={activeOrder}
-            showAdminSimulationControls={true}
-          />
+        {/* Empty State when no orders exist */}
+        {allDisplayOrders.length === 0 ? (
+          <div className="bg-white rounded-[32px] border border-gray-100 p-8 shadow-sm text-center flex flex-col items-center">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 border border-emerald-100">
+              <Package size={32} />
+            </div>
+            <h3 className="text-base font-black text-gray-900 mb-1">No Orders Placed Yet</h3>
+            <p className="text-xs text-gray-500 mb-6 max-w-xs leading-relaxed">
+              Explore local produce, goods, and services from market traders across Eswatini!
+            </p>
+            <Link
+              to="/"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-6 py-3 rounded-2xl shadow-md transition-all active:scale-95 flex items-center gap-2"
+            >
+              <ShoppingBag size={16} />
+              <span>Browse Marketplace</span>
+            </Link>
+          </div>
+        ) : (
+          <>
+            {/* Active Order Tracker Component */}
+            {activeOrder && (
+              <OrderStatusTracker 
+                order={activeOrder}
+                showAdminSimulationControls={true}
+              />
+            )}
+          </>
         )}
 
         {/* List of Other Orders if multiple */}

@@ -250,35 +250,6 @@ export default function DriverDashboard() {
               <h3 className="font-display font-black text-sm text-slate-800 uppercase tracking-wide font-sans">Register New Courier Profile</h3>
             </div>
 
-            {/* Quick Presets */}
-            <div className="bg-slate-50 p-3 rounded-2xl mb-5">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 font-mono">Quick Fill Demo Presets:</span>
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleApplyDriverPreset('Musa Dlamini', '+268 7604 1122', 'Motorcycle', '+268 7604 1122', 'SZ-891-23B', 'Ezulwini')}
-                  className="w-full text-left bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl p-2 text-xs flex justify-between items-center transition-all cursor-pointer"
-                >
-                  <div>
-                    <p className="font-bold">🏍️ Musa Dlamini (Ezulwini)</p>
-                    <p className="text-[10px] text-slate-400 font-sans">Motorcycle • License: SZ-891-23B • MoMo: +268 7604 1122</p>
-                  </div>
-                  <Sparkles size={12} className="text-blue-500 animate-pulse" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyDriverPreset('Sizwe Gamedze', '+268 7812 5543', 'Sedan Car', '+268 7812 5543', 'SZ-452-91C', 'Mbabane Heights')}
-                  className="w-full text-left bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl p-2 text-xs flex justify-between items-center transition-all cursor-pointer"
-                >
-                  <div>
-                    <p className="font-bold">🚗 Sizwe Gamedze (Mbabane)</p>
-                    <p className="text-[10px] text-slate-405 font-sans">Sedan Car • License: SZ-452-91C • MoMo: +268 7812 5543</p>
-                  </div>
-                  <Sparkles size={12} className="text-blue-500 animate-pulse" />
-                </button>
-              </div>
-            </div>
-
             {regError && (
               <div className="bg-rose-50 border border-rose-105 text-rose-700 rounded-xl p-3 text-xs font-bold mb-4 font-sans">
                 {regError}
