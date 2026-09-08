@@ -2,22 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useFirebase } from './FirebaseProvider';
 
 export const AdminDebugger: React.FC = () => {
-  const { sellers, banners, promotions } = useFirebase();
-  const [wallet, setWallet] = useState<any>(null);
-
-  useEffect(() => {
-    // Read wallet from localStorage
-    try {
-      const balance = localStorage.getItem('emakethe_wallet_balance');
-      const transactions = localStorage.getItem('emakethe_wallet_transactions');
-      setWallet({
-        balance: balance || '0.00',
-        transactions: transactions ? JSON.parse(transactions) : []
-      });
-    } catch (e) {
-      console.error('Error reading wallet:', e);
-    }
-  }, []);
+  const { sellers, banners, promotions, transactions } = useFirebase();
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen text-xs">
@@ -27,10 +12,7 @@ export const AdminDebugger: React.FC = () => {
         <DataList title="Sellers (Traders)" data={sellers} />
         <DataList title="Promotions" data={promotions} />
         <DataList title="Banners" data={banners} />
-        <div className="bg-white p-4 rounded shadow">
-          <h2 className="font-bold text-lg mb-2">Wallet (Local Storage)</h2>
-          <pre>{JSON.stringify(wallet, null, 2)}</pre>
-        </div>
+        <DataList title="Transactions Ledger (Firestore)" data={transactions} />
       </div>
     </div>
   );

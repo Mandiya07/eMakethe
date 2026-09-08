@@ -1010,7 +1010,7 @@ export default function NearbyMap() {
           ---------------------------------------------------- */}
       <footer className="bg-slate-100 border-t border-slate-200 p-4 pb-20 text-center">
         <p className="text-[9.5px] text-slate-400 leading-normal max-w-[325px] mx-auto font-sans font-medium">
-          🔒 GPS location data is calculated locally using browser Haversine algorithms in eMakethe Sandbox environment. Direct payments route transparently through split Escrows.
+          🔒 GPS location data is calculated locally using browser Haversine algorithms in eMakethe Sandbox environment. Direct payments route transparently through regional mobile money networks.
         </p>
       </footer>
 

@@ -2,7 +2,7 @@ import { MapPin, CheckCircle2, Navigation2, DollarSign, Package, User, Phone, Lo
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, collection, getDoc } from 'firebase/firestore';
 
 export default function DriverDashboard() {
   // Onboarding & Registration States
@@ -73,17 +73,22 @@ export default function DriverDashboard() {
   const [activeEscrowId, setActiveEscrowId] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('activeEscrows');
-      if (stored) {
-        setEscrowOrders(JSON.parse(stored));
+    const unsub = onSnapshot(collection(db, 'escrows'), (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setEscrowOrders(items);
+      try {
+        localStorage.setItem('activeEscrows', JSON.stringify(items));
+      } catch (e) {
+        console.warn(e);
       }
-    } catch (e) {
-      console.warn(e);
-    }
+    }, (error) => {
+      console.warn("Firestore listener error in DriverDashboard: ", error);
+    });
+    return () => unsub();
   }, []);
 
-  const syncLocalStorage = (updatedOrders: any[]) => {
+  const syncLocalStorage = async (updatedOrders: any[]) => {
+    // Legacy support fallback, real work is done directly via setDoc
     try {
       localStorage.setItem('activeEscrows', JSON.stringify(updatedOrders));
       setEscrowOrders(updatedOrders);
@@ -154,16 +159,40 @@ export default function DriverDashboard() {
     setIsPendingAvailable(false);
   };
 
-  const handleAcceptEscrowJob = (id: string) => {
+  const handleAcceptEscrowJob = async (id: string) => {
     setActiveEscrowId(id);
-    const updated = escrowOrders.map(esc => esc.id === id ? { ...esc, description: 'Matched driver en route for pickup...' } : esc);
-    syncLocalStorage(updated);
+    try {
+      const escrowRef = doc(db, 'escrows', id);
+      const escrowSnap = await getDoc(escrowRef);
+      if (escrowSnap.exists()) {
+        const item = escrowSnap.data();
+        await setDoc(escrowRef, {
+          ...item,
+          driverId: driverId || "matched_driver",
+          description: 'Matched driver en route for pickup...'
+        });
+      }
+    } catch (e) {
+      console.warn(e);
+    }
     setActiveTab('active');
   };
 
-  const handleCompleteEscrowJob = (id: string) => {
-    const updated = escrowOrders.map(esc => esc.id === id ? { ...esc, status: 'Delivered', description: 'Package dropped off. Awaiting buyer confirmation release.' } : esc);
-    syncLocalStorage(updated);
+  const handleCompleteEscrowJob = async (id: string) => {
+    try {
+      const escrowRef = doc(db, 'escrows', id);
+      const escrowSnap = await getDoc(escrowRef);
+      if (escrowSnap.exists()) {
+        const item = escrowSnap.data();
+        await setDoc(escrowRef, {
+          ...item,
+          status: 'Delivered',
+          description: 'Package dropped off. Awaiting buyer confirmation release.'
+        });
+      }
+    } catch (e) {
+      console.warn(e);
+    }
     setActiveEscrowId(null);
     setTodayEarnings(prev => prev + 40.00);
     setDeliveryCount(prev => prev + 1);

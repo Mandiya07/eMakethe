@@ -4,7 +4,7 @@ import GlobalAiAssistant from './GlobalAiAssistant';
 import AccessibilityMenu from './AccessibilityMenu';
 import RoleSwitcher from './RoleSwitcher';
 import { useState, useEffect } from 'react';
-import { WifiOff, Home, Compass, MessageCircle, Wallet, Menu } from 'lucide-react';
+import { WifiOff, Home, Compass, MessageCircle, Wallet, Menu, Package } from 'lucide-react';
 
 export default function Layout() {
   const location = useLocation();
@@ -99,28 +99,17 @@ export default function Layout() {
 
             {/* Main Navigation Links */}
             <nav className="flex flex-col gap-1.5 mt-2" id="desktop-nav-menu">
-              <DesktopNavItem to="/" label="Home Feed" icon={<Home size={20} />} isActive={location.pathname === '/'} />
+              <DesktopNavItem to="/" label="Home Marketplace" icon={<Home size={20} />} isActive={location.pathname === '/'} />
+              <DesktopNavItem to="/orders" label="Track Orders" icon={<Package size={20} />} isActive={location.pathname === '/orders' || location.pathname === '/buyer-dashboard'} />
               <DesktopNavItem to="/feed" label="Interactive Feed" icon={<Compass size={20} />} isActive={location.pathname === '/feed'} />
               <DesktopNavItem to="/messages" label="Trader Chats" icon={<MessageCircle size={20} />} isActive={location.pathname === '/messages'} />
-              <DesktopNavItem to="/wallet" label="My e-Wallet" icon={<Wallet size={20} />} isActive={location.pathname === '/wallet'} />
               <DesktopNavItem to="/dashboard" label="Seller Center" icon={<Menu size={20} />} isActive={location.pathname === '/dashboard'} />
             </nav>
           </div>
 
-          {/* Core Balance Simulation & App State */}
+          {/* Desktop Footer Info */}
           <div className="border-t border-gray-100 pt-4">
-            <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1 border border-slate-100">
-              <div className="flex justify-between text-[10px] font-black text-gray-400 tracking-wider">
-                <span>WALLET BAL</span>
-                <span className="text-emerald-600 font-extrabold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> SECURE
-                </span>
-              </div>
-              <div className="text-lg font-black text-slate-800">E {walletBalance}</div>
-              <div className="text-[9px] text-gray-400 font-medium">Synced with MTN MoMo & SwaziPay</div>
-            </div>
-            
-            <div className="text-[10px] text-gray-400 text-center mt-4 font-medium">
+            <div className="text-[10px] text-gray-400 text-center font-medium">
               eMakethe v3.2 Desktop Portal
             </div>
           </div>

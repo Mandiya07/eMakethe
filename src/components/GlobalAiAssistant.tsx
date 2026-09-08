@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom';
 export default function GlobalAiAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{sender: 'ai'|'user', text: string}[]>([
-    { sender: 'ai', text: 'Hi! I am the eMakethe AI Assistant. I can help you with product details, direct checkout, secure Escrow payments, and fast 2-hour motorcycle riders. What do you need?' }
+    { sender: 'ai', text: 'Hi! I am the eMakethe AI Assistant. I can help you with product details, direct checkout, secure payments, and fast 2-hour motorcycle riders. What do you need?' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);

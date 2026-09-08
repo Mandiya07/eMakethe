@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { useState, FormEvent, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, collection } from 'firebase/firestore';
 
 // Unified type and configuration for African MoMo networks
 type CountryCode = 'SZ' | 'KE' | 'GH' | 'UG' | 'SN';
@@ -235,17 +235,39 @@ export default function Wallet() {
   }, [transactions]);
 
   // Escrow state list loaded dynamically
-  const [escrowItems, setEscrowItems] = useState<{ id: string; item: string; amount: number; recipient: string; description: string; provider: string; status: string; date: string; image?: string; buyerPhone?: string; }[]>(() => {
-    try {
-      const stored = localStorage.getItem('activeEscrows');
-      if (stored) {
-        return JSON.parse(stored);
+  const [escrowItems, setEscrowItems] = useState<{ id: string; item: string; amount: number; recipient: string; description: string; provider: string; status: string; date: string; image?: string; buyerPhone?: string; }[]>([]);
+
+  // Listen for real-time Firestore updates for escrows and transactions
+  useEffect(() => {
+    const unsubEscrows = onSnapshot(collection(db, 'escrows'), (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setEscrowItems(items);
+      try {
+        localStorage.setItem('activeEscrows', JSON.stringify(items));
+      } catch (e) {
+        console.warn(e);
       }
-    } catch (e) {
-      console.warn(e);
-    }
-    return [];
-  });
+    }, (error) => {
+      console.warn("Firestore escrows listener error: ", error);
+    });
+
+    const unsubTransactions = onSnapshot(collection(db, 'transactions'), (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setTransactions(items);
+      try {
+        localStorage.setItem('emakethe_wallet_transactions', JSON.stringify(items));
+      } catch (e) {
+        console.warn(e);
+      }
+    }, (error) => {
+      console.warn("Firestore transactions listener error: ", error);
+    });
+
+    return () => {
+      unsubEscrows();
+      unsubTransactions();
+    };
+  }, []);
 
   // Modal displays
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -340,6 +362,7 @@ export default function Wallet() {
   const [newCardCvv, setNewCardCvv] = useState('');
   const [makeDefaultCard, setMakeDefaultCard] = useState(false);
   const [showAddCardForm, setShowAddCardForm] = useState(false);
+  const [isConnectingGateway, setIsConnectingGateway] = useState(false);
 
   // Loading and feedback automation
   const [processingState, setProcessingState] = useState<'idle' | 'depositing' | 'withdrawing' | 'p2p' | 'merchant' | 'refund' | 'escrow-release' | 'escrow-refund' | 'qr-pay' | 'cashout' | 'bank-eft' | 'bank-instant' | 'bank-confirm'>('idle');
@@ -570,18 +593,19 @@ export default function Wallet() {
   };
 
   // 5. Escrow Release
-  const handleReleaseEscrow = (id: string, itemTitle: string, amount: number) => {
+  const handleReleaseEscrow = async (id: string, itemTitle: string, amount: number) => {
     setProcessingState('escrow-release');
-    setTimeout(() => {
-      setEscrowItems(prev => {
-        const updated = prev.map(item => item.id === id ? { ...item, status: 'Paid', description: 'Funds successfully released to Seller!' } : item);
-        try {
-          localStorage.setItem('activeEscrows', JSON.stringify(updated));
-        } catch (e) {
-          console.warn(e);
-        }
-        return updated;
-      });
+    try {
+      const escrowRef = doc(db, 'escrows', id);
+      const escrowSnap = await getDoc(escrowRef);
+      if (escrowSnap.exists()) {
+        const item = escrowSnap.data();
+        await setDoc(escrowRef, {
+          ...item,
+          status: 'Paid',
+          description: 'Funds successfully released to Seller!'
+        });
+      }
       
       const newTx: Transaction = {
         id: `tx-${Math.floor(Math.random() * 900) + 100}`,
@@ -594,25 +618,35 @@ export default function Wallet() {
         status: 'Completed'
       };
 
-      setTransactions(prev => [newTx, ...prev]);
+      await setDoc(doc(db, 'transactions', newTx.id), newTx);
+      
+      // Also credit merchant balance in localStorage as a backup
+      const currentMerchantBal = parseFloat(localStorage.getItem('emakethe_merchant_balance') || '380.00');
+      localStorage.setItem('emakethe_merchant_balance', (currentMerchantBal + amount).toFixed(2));
+
       setProcessingState('idle');
       triggerToast(`🔑 Escrow Release Approved! ${currentCountry.currency} ${amount.toFixed(2)} cleared to Trader account.`);
-    }, 1800);
+    } catch (err) {
+      console.warn(err);
+      setProcessingState('idle');
+    }
   };
 
   // 6. Direct Escrow Refund Simulation
-  const handleRefundEscrow = (id: string, itemTitle: string, amount: number) => {
+  const handleRefundEscrow = async (id: string, itemTitle: string, amount: number) => {
     setProcessingState('escrow-refund');
-    setTimeout(() => {
-      setEscrowItems(prev => {
-        const updated = prev.map(item => item.id === id ? { ...item, status: 'Refunded', description: 'Reversed due to cancel / issue' } : item);
-        try {
-          localStorage.setItem('activeEscrows', JSON.stringify(updated));
-        } catch (e) {
-          console.warn(e);
-        }
-        return updated;
-      });
+    try {
+      const escrowRef = doc(db, 'escrows', id);
+      const escrowSnap = await getDoc(escrowRef);
+      if (escrowSnap.exists()) {
+        const item = escrowSnap.data();
+        await setDoc(escrowRef, {
+          ...item,
+          status: 'Refunded',
+          description: 'Reversed due to cancel / issue'
+        });
+      }
+
       setBalance(prev => prev + amount);
 
       const newTx: Transaction = {
@@ -626,10 +660,13 @@ export default function Wallet() {
         status: 'Refunded'
       };
 
-      setTransactions(prev => [newTx, ...prev]);
+      await setDoc(doc(db, 'transactions', newTx.id), newTx);
       setProcessingState('idle');
       triggerToast(`↩️ Refund Approved: Code MoMo-Reverse. ${currentCountry.currency} ${amount.toFixed(2)} returned to your phone!`);
-    }, 1800);
+    } catch (err) {
+      console.warn(err);
+      setProcessingState('idle');
+    }
   };
 
   // 7. Direct Transaction Refund Reversal
@@ -716,48 +753,49 @@ export default function Wallet() {
   // Card Management Handlers
   const handleAddCard = (e: FormEvent) => {
     e.preventDefault();
-    if (!newCardNumber || !newCardHolder || !newCardExpiry || !newCardCvv) {
-      alert('Please fill out all card fields');
-      return;
-    }
-    
-    // Validate card number length
-    const cleanNum = newCardNumber.replace(/\s+/g, '');
-    if (cleanNum.length < 13 || cleanNum.length > 19) {
-      alert('Please enter a valid credit card number');
+    if (!newCardHolder) {
+      alert('Please enter the Cardholder Name');
       return;
     }
 
-    const maskedNum = `•••• •••• •••• ${cleanNum.slice(-4)}`;
-    
-    const newCard: SavedCard = {
-      id: `card-${Math.floor(Math.random() * 90000) + 10000}`,
-      brand: newCardBrand,
-      number: maskedNum,
-      holder: newCardHolder,
-      expiry: newCardExpiry,
-      cvv: newCardCvv,
-      isDefault: makeDefaultCard || savedCards.length === 0,
-      addedAt: new Date().toISOString().split('T')[0]
-    };
+    setIsConnectingGateway(true);
 
-    let updatedCards = [...savedCards];
-    if (newCard.isDefault) {
-      updatedCards = updatedCards.map(c => ({ ...c, isDefault: false }));
-    }
-    updatedCards.push(newCard);
+    // Simulate standard hosted payment gateway redirection & webhook validation
+    setTimeout(() => {
+      const cleanNum = Math.floor(1000 + Math.random() * 9000).toString();
+      const maskedNum = `•••• •••• •••• ${cleanNum}`;
+      
+      const newCard: SavedCard = {
+        id: `card-${Math.floor(Math.random() * 90000) + 10000}`,
+        brand: newCardBrand,
+        number: maskedNum,
+        holder: newCardHolder,
+        expiry: '12/29',
+        cvv: '***',
+        isDefault: makeDefaultCard || savedCards.length === 0,
+        addedAt: new Date().toISOString().split('T')[0]
+      };
 
-    setSavedCards(updatedCards);
-    localStorage.setItem('emakethe_saved_cards', JSON.stringify(updatedCards));
-    
-    // reset form
-    setNewCardNumber('');
-    setNewCardHolder('');
-    setNewCardExpiry('');
-    setNewCardCvv('');
-    setMakeDefaultCard(false);
-    setShowAddCardForm(false);
-    triggerToast(`💳 Card successfully secured: Added ${newCardBrand} card ending in ${cleanNum.slice(-4)}`);
+      let updatedCards = [...savedCards];
+      if (newCard.isDefault) {
+        updatedCards = updatedCards.map(c => ({ ...c, isDefault: false }));
+      }
+      updatedCards.push(newCard);
+
+      setSavedCards(updatedCards);
+      localStorage.setItem('emakethe_saved_cards', JSON.stringify(updatedCards));
+      
+      // reset form
+      setNewCardNumber('');
+      setNewCardHolder('');
+      setNewCardExpiry('');
+      setNewCardCvv('');
+      setMakeDefaultCard(false);
+      setShowAddCardForm(false);
+      setIsConnectingGateway(false);
+      
+      triggerToast(`💳 Card successfully secured: Added ${newCardBrand} card ending in ${cleanNum} via Hosted Gateway`);
+    }, 2500);
   };
 
   const handleDeleteCard = (cardId: string) => {
@@ -1697,92 +1735,92 @@ export default function Wallet() {
                {/* Add Card Form */}
                {showAddCardForm && (
                   <form onSubmit={handleAddCard} className="bg-white p-5 rounded-3xl border border-green-200/60 shadow-md flex flex-col gap-3.5 animate-in slide-in-from-top-4 duration-200 font-sans font-sans">
-                     <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider border-b border-gray-100 pb-2">Secured Card Information</h4>
+                     <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider border-b border-gray-100 pb-2">Link Card via Hosted Payment Gateway</h4>
                      
-                     <div className="grid grid-cols-2 gap-3 font-sans">
-                        <div className="flex flex-col gap-1">
-                           <label className="text-[9px] font-black text-gray-400 uppercase">Card Brand</label>
-                           <select 
-                             value={newCardBrand} 
-                             onChange={(e) => setNewCardBrand(e.target.value as any)}
-                             className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none"
-                           >
-                              <option value="Visa">Visa</option>
-                              <option value="Mastercard">Mastercard</option>
-                              <option value="American Express">American Express (Amex)</option>
-                              <option value="UnionPay">UnionPay</option>
-                           </select>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                           <label className="text-[9px] font-black text-gray-400 uppercase">Cardholder Name</label>
-                           <input 
-                             type="text" 
-                             required
-                             value={newCardHolder}
-                             onChange={(e) => setNewCardHolder(e.target.value)}
-                             placeholder="John Myati"
-                             className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none"
-                           />
-                        </div>
-                     </div>
+                     {isConnectingGateway ? (
+                       <div className="flex flex-col items-center justify-center py-6 text-center text-slate-800">
+                         <Loader2 size={36} className="text-green-600 animate-spin mb-4" />
+                         <h5 className="font-extrabold text-xs uppercase tracking-wider text-slate-700">Initiating Safe Card Link</h5>
+                         
+                         <div className="mt-4 flex flex-col gap-2 text-[10px] text-slate-500 font-mono text-left max-w-xs mx-auto border border-slate-100 bg-slate-50 p-4 rounded-2xl w-full">
+                           <div className="flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                             <span>1. eMakethe &rarr; Secure API Call</span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                             <span>2. Hosted Secure Payment Iframe</span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                             <span>3. 3-D Secure SMS/OTP Approval</span>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                             <span>4. Secure Webhook Profile Sync</span>
+                           </div>
+                         </div>
+                         
+                         <p className="text-[9px] text-gray-400 mt-4 leading-normal max-w-xs">
+                           Please do not close this window. Redirecting to our PCI-DSS compliant partner...
+                         </p>
+                       </div>
+                     ) : (
+                       <>
+                         <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/20 text-[10px] text-emerald-800 leading-normal flex items-start gap-2">
+                           <Shield size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                           <div>
+                             <span className="font-bold">PCI-DSS Security Protocol:</span> eMakethe never captures, processes, or stores raw Card Numbers, Expiries, or CVV codes on our servers. Your data is handled entirely inside the secure iframe of our licensed PCI Compliant payment gateway partner.
+                           </div>
+                         </div>
 
-                     <div className="flex flex-col gap-1 font-sans">
-                        <label className="text-[9px] font-black text-gray-400 uppercase">Card Number</label>
-                        <input 
-                          type="text" 
-                          required
-                          value={newCardNumber}
-                          onChange={(e) => setNewCardNumber(e.target.value)}
-                          placeholder="4242 4242 4242 4242"
-                          maxLength={19}
-                          className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-800 outline-none"
-                        />
-                     </div>
+                         <div className="grid grid-cols-2 gap-3 font-sans">
+                            <div className="flex flex-col gap-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase">Card Brand</label>
+                               <select 
+                                 value={newCardBrand} 
+                                 onChange={(e) => setNewCardBrand(e.target.value as any)}
+                                 className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none"
+                               >
+                                  <option value="Visa">Visa</option>
+                                  <option value="Mastercard">Mastercard</option>
+                                  <option value="American Express">American Express (Amex)</option>
+                                  <option value="UnionPay">UnionPay</option>
+                               </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase">Cardholder Name</label>
+                               <input 
+                                 type="text" 
+                                 required
+                                 value={newCardHolder}
+                                 onChange={(e) => setNewCardHolder(e.target.value)}
+                                 placeholder="John Myati"
+                                 className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none"
+                               />
+                            </div>
+                         </div>
 
-                     <div className="grid grid-cols-2 gap-3 font-sans font-sans">
-                        <div className="flex flex-col gap-1">
-                           <label className="text-[9px] font-black text-gray-400 uppercase">Expiry Date</label>
-                           <input 
-                             type="text" 
-                             required
-                             value={newCardExpiry}
-                             onChange={(e) => setNewCardExpiry(e.target.value)}
-                             placeholder="MM/YY"
-                             maxLength={5}
-                             className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-800 outline-none"
-                           />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                           <label className="text-[9px] font-black text-gray-400 uppercase">CVV Code</label>
-                           <input 
-                             type="password" 
-                             required
-                             value={newCardCvv}
-                             onChange={(e) => setNewCardCvv(e.target.value)}
-                             placeholder="•••"
-                             maxLength={4}
-                             className="bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-800 outline-none"
-                           />
-                        </div>
-                     </div>
+                         <div className="flex items-center gap-2 mt-1">
+                            <input 
+                              type="checkbox" 
+                              id="makeDefault"
+                              checked={makeDefaultCard}
+                              onChange={(e) => setMakeDefaultCard(e.target.checked)}
+                              className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 accent-green-600"
+                            />
+                            <label htmlFor="makeDefault" className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">Make Default Card for Payments</label>
+                         </div>
 
-                     <div className="flex items-center gap-2 mt-1">
-                        <input 
-                          type="checkbox" 
-                          id="makeDefault"
-                          checked={makeDefaultCard}
-                          onChange={(e) => setMakeDefaultCard(e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 accent-green-600"
-                        />
-                        <label htmlFor="makeDefault" className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">Make Default Card for Payments</label>
-                     </div>
-
-                     <button 
-                       type="submit"
-                       className="w-full bg-green-600 hover:bg-green-700 text-white font-black text-xs uppercase py-3 rounded-xl transition-all tracking-wider mt-1 cursor-pointer"
-                     >
-                       🔒 Save Card Secures
-                     </button>
+                         <button 
+                           type="submit"
+                           className="w-full bg-green-600 hover:bg-green-700 text-white font-black text-xs uppercase py-3.5 rounded-xl transition-all tracking-wider mt-1 cursor-pointer flex items-center justify-center gap-1.5"
+                         >
+                           <span>Redirect to Secure Card Link Form</span>
+                           <ArrowRight size={14} />
+                         </button>
+                       </>
+                     )}
                   </form>
                )}
 

@@ -2,7 +2,6 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-// Trigger redeployment
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import { FirebaseProvider } from './components/FirebaseProvider';
@@ -19,6 +18,7 @@ import Checkout from './pages/Checkout';
 import DriverDashboard from './pages/DriverDashboard';
 import NearbyMap from './pages/NearbyMap';
 import AdminDashboard from './pages/AdminDashboard';
+import BuyerDashboard from './pages/BuyerDashboard';
 import { AdminDebugger } from './components/AdminDebugger';
 import Advertise from './pages/Advertise';
 
@@ -36,6 +36,8 @@ export default function App() {
             <Route path="wallet" element={<Wallet />} />
             <Route path="messages" element={<Messages />} />
             <Route path="dashboard" element={<SellerDashboard />} />
+            <Route path="buyer-dashboard" element={<BuyerDashboard />} />
+            <Route path="orders" element={<BuyerDashboard />} />
             <Route path="register-seller" element={<RegisterSeller />} />
             <Route path="driver" element={<DriverDashboard />} />
             <Route path="admin" element={<AdminDashboard />} />

@@ -1,24 +1,51 @@
 {
   "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role-based access control.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "ADMIN", "MODERATOR", "FINANCE_ADMIN", "SUPPORT_AGENT", "CONTENT_MANAGER", "SELLER", "CUSTOMER", "DRIVER"] },
+        "sellerId": { "type": "string" },
+        "driverId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "role"]
+    },
     "Seller": {
       "title": "Seller",
       "description": "Information about a seller on the platform.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "userId": { "type": "string" },
         "name": { "type": "string" },
         "location": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
         "hours": { "type": "string" },
         "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
         "rating": { "type": "number" },
         "reviews": { "type": "number" },
+        "completedOrders": { "type": "number" },
         "deliveryAvailable": { "type": "boolean" },
+        "pickupAvailable": { "type": "boolean" },
         "paymentMethods": { "type": "array", "items": { "type": "string" } },
         "bannerUrl": { "type": "string" },
         "logoUrl": { "type": "string" },
         "description": { "type": "string" },
         "verificationLevel": { "type": "string" },
-        "category": { "type": "string" }
+        "category": { "type": "string" },
+        "themeColor": { "type": "string" },
+        "announcement": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["id", "name", "location", "phone"]
     },
@@ -38,54 +65,20 @@
         "stock": { "type": "number" },
         "categoryId": { "type": "string" },
         "subCategoryId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "out_of_stock", "draft", "archived"] },
+        "deliveryAvailable": { "type": "boolean" },
+        "pickupAvailable": { "type": "boolean" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
         "distance": { "type": "string" },
-        "hasVideo": { "type": "boolean" }
+        "hasVideo": { "type": "boolean" },
+        "views": { "type": "number" },
+        "favorites": { "type": "number" },
+        "shares": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["id", "sellerId", "name", "price"]
-    },
-    "Banner": {
-      "title": "Banner",
-      "description": "Local sponsored banner.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "heading": { "type": "string" },
-        "coupon": { "type": "string" },
-        "theme": { "type": "string" },
-        "imageUrl": { "type": "string" },
-        "sellerId": { "type": "string" }
-      },
-      "required": ["id", "title", "heading", "imageUrl"]
-    },
-    "Driver": {
-      "title": "Driver",
-      "description": "Information about a registered delivery partner driver.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "phone": { "type": "string" },
-        "vehicleType": { "type": "string" },
-        "momoNumber": { "type": "string" },
-        "licenseId": { "type": "string" },
-        "suburb": { "type": "string" },
-        "registeredAt": { "type": "string" }
-      },
-      "required": ["id", "name", "phone", "vehicleType", "momoNumber", "licenseId", "suburb"]
-    },
-    "Admin": {
-      "title": "Admin",
-      "description": "Information about an authorized administrator.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "employeeId": { "type": "string" },
-        "passcode": { "type": "string" },
-        "registeredAt": { "type": "string" }
-      },
-      "required": ["id", "name", "employeeId", "passcode"]
     },
     "Category": {
       "title": "Category",
@@ -99,32 +92,126 @@
         "subcategories": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "name", "icon"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Marketplace purchase order document.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "total": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["MTN_MOMO", "CARD", "COD", "PAY_ON_COLLECTION", "WHATSAPP_LINK"] },
+        "paymentStatus": { "type": "string", "enum": ["UNPAID", "PENDING", "PAID", "FAILED", "CANCELLED", "REFUNDED"] },
+        "orderStatus": { "type": "string", "enum": ["PENDING", "ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "READY_FOR_COLLECTION", "DELIVERED", "COMPLETED", "CANCELLED"] },
+        "deliveryMethod": { "type": "string", "enum": ["DELIVERY", "PICKUP"] },
+        "deliveryAddress": { "type": "string" },
+        "pickupLocation": { "type": "string" },
+        "customerNotes": { "type": "string" },
+        "paymentReference": { "type": "string" },
+        "paymentUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "customerId", "sellerId", "items", "total", "paymentMethod", "paymentStatus", "orderStatus", "deliveryMethod"]
+    },
+    "PaymentRecord": {
+      "title": "PaymentRecord",
+      "description": "Immutable payment transaction record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "provider": { "type": "string" },
+        "providerReference": { "type": "string" },
+        "status": { "type": "string" },
+        "idempotencyKey": { "type": "string" },
+        "failureReason": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "verifiedAt": { "type": "string" }
+      },
+      "required": ["id", "orderId", "amount", "status", "idempotencyKey"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Customer reviews for sellers and products.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "productId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "sellerId", "customerId", "rating", "comment"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System and administrative action audit record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "actorId": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "action": { "type": "string" },
+        "resourceType": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "actorId", "action", "resourceType", "resourceId", "timestamp"]
     }
   },
   "firestore": {
+    "users": {
+      "schema": { "$ref": "UserProfile" },
+      "description": "User profiles and RBAC assignment."
+    },
     "sellers": {
       "schema": { "$ref": "Seller" },
-      "description": "Collection of sellers."
+      "description": "Collection of informal traders and business stalls."
     },
     "products": {
       "schema": { "$ref": "Product" },
-      "description": "Collection of products."
-    },
-    "banners": {
-      "schema": { "$ref": "Banner" },
-      "description": "Collection of banners."
-    },
-    "drivers": {
-      "schema": { "$ref": "Driver" },
-      "description": "Collection of delivery partner drivers."
-    },
-    "admins": {
-      "schema": { "$ref": "Admin" },
-      "description": "Collection of authorized administrators."
+      "description": "Collection of products offered by traders."
     },
     "categories": {
       "schema": { "$ref": "Category" },
-      "description": "Collection of product categories."
+      "description": "Product taxonomy and categories."
+    },
+    "orders": {
+      "schema": { "$ref": "Order" },
+      "description": "Orders created across discovery, cart, and checkout."
+    },
+    "payments": {
+      "schema": { "$ref": "PaymentRecord" },
+      "description": "Secure payment transactions and provider references."
+    },
+    "reviews": {
+      "schema": { "$ref": "Review" },
+      "description": "Customer feedback and reviews."
+    },
+    "audit_logs": {
+      "schema": { "$ref": "AuditLog" },
+      "description": "Immutable security and operational audit trail."
     }
   }
 }

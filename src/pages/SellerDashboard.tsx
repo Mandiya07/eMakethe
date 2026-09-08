@@ -66,15 +66,17 @@ export default function SellerDashboard() {
   const [escrowOrders, setEscrowOrders] = useState<any[]>([]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('activeEscrows');
-      if (stored) {
-        setEscrowOrders(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.warn(e);
-    }
-  }, []);
+    if (!seller) return;
+    const unsub = onSnapshot(collection(db, 'escrows'), (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      // Filter for this seller by ID or merchant name match
+      const filtered = items.filter(o => o.sellerId === seller.id || o.recipient === seller.name);
+      setEscrowOrders(filtered);
+    }, (error) => {
+      console.warn("Firestore listener error in SellerDashboard: ", error);
+    });
+    return () => unsub();
+  }, [seller]);
   
   // Dynamic monetization states matching Admin and User requests
   const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'products' | 'ai-coach' | 'ads' | 'security' | 'premium_hub' | 'whatsapp_setup' | 'referral_program'>('analytics');
@@ -977,7 +979,7 @@ export default function SellerDashboard() {
                       <div>
                          <span className="block text-[9px] font-black text-indigo-700 uppercase tracking-widest font-mono mb-1">Recommended Payment Platform for Buyers</span>
                          <p className="text-[10px] text-gray-500 mb-2 leading-normal font-sans">
-                            Specify the primary payment method you prefer on checkout. eMakethe will highlight this for buyers to speed up payment and escrow lock!
+                            Specify the primary payment method you prefer on checkout. eMakethe will highlight this for buyers to speed up payment and order processing!
                          </p>
                          <div className="grid grid-cols-2 gap-1.5 font-sans">
                             {['MTN MoMo', 'Eswatini Mobile eMali', 'FNB Bank', 'Standard Bank'].map(platform => (
@@ -1246,7 +1248,7 @@ export default function SellerDashboard() {
                                         
                                         <div className="w-full h-[1px] bg-slate-800 my-1"></div>
                                         <div className="flex justify-between font-bold text-white text-[10px] mt-1 pt-1 border-t border-slate-800 border-dashed">
-                                           <span>NET MERCHANT SETTLEMENT (Escrow):</span>
+                                           <span>NET MERCHANT SETTLEMENT:</span>
                                            <span>E {finalOrderPayout.toFixed(2)}</span>
                                         </div>
                                      </>
@@ -1531,7 +1533,7 @@ export default function SellerDashboard() {
                           </div>
                        </div>
                        <p className="text-[9.5px] text-slate-400 leading-normal bg-slate-800/35 p-2.5 rounded-xl border border-white/5">
-                         🏍️ <strong>Marketplace Driver Pooling</strong>: Verifies, tracks, and maps dispatch riders automatically using MTN MoMo split payments. Escrow funds stay secure until delivery is fully resolved.
+                         🏍️ <strong>Marketplace Driver Pooling</strong>: Verifies, tracks, and maps dispatch riders automatically using MTN MoMo split payments. Orders and payments remain fully tracked until delivery is fully resolved.
                        </p>
                     </div>
                  )}
@@ -1540,11 +1542,11 @@ export default function SellerDashboard() {
              {/* Dynamic Escrow Orders from localStorage */}
              {escrowOrders.length > 0 && (
                <div className="flex flex-col gap-3 pb-2 border-b border-gray-200">
-                 <h3 className="font-black text-xs uppercase tracking-wider text-gray-500 px-1">🔒 Escrow Payment Orders ({escrowOrders.length})</h3>
+                 <h3 className="font-black text-xs uppercase tracking-wider text-gray-500 px-1">🔒 Regional Payment Orders ({escrowOrders.length})</h3>
                  {escrowOrders.map(order => (
                    <div key={order.id} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-200 relative overflow-hidden">
                      <div className="absolute top-0 right-0 bg-blue-100 text-blue-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-bl-lg font-mono">
-                        Escrow Guarded
+                        Secure Payment
                      </div>
                      
                      <div className="flex justify-between items-start mb-2">
@@ -1555,10 +1557,10 @@ export default function SellerDashboard() {
                             order.status === 'Paid' ? 'bg-green-100 text-green-800' :
                             'bg-red-100 text-red-800'
                           }`}>
-                             {order.status === 'Locked' && '🤝 Funds Secured in Escrow'}
+                             {order.status === 'Locked' && '🤝 Payment Processing'}
                              {order.status === 'Delivered' && '🏍️ Delivery Completed'}
                              {order.status === 'Paid' && '💸 Paid Out (Released)'}
-                             {order.status === 'Refunded' && '↩️ Escrow Reversed (Refunded)'}
+                             {order.status === 'Refunded' && '↩️ Payment Reversed (Refunded)'}
                           </span>
                           <h4 className="font-extrabold text-gray-800 text-xs mt-2">{order.item}</h4>
                         </div>
@@ -1572,14 +1574,14 @@ export default function SellerDashboard() {
                      {order.status === 'Locked' && (
                        <div className="bg-amber-50/70 rounded-xl p-2.5 border border-amber-100/50 text-[10px] text-amber-900 leading-normal flex items-start gap-2">
                          <Lock size={12} className="text-amber-600 shrink-0 mt-0.5" />
-                         <span>Funds are safely locked in eMakethe Escrow Trust. Prepare harvest package and wait for matched rider pick-up.</span>
+                         <span>Payment is being processed securely. Prepare harvest package and wait for matched rider pick-up.</span>
                        </div>
                      )}
 
                      {order.status === 'Delivered' && (
                        <div className="bg-indigo-50/70 rounded-xl p-2.5 border border-indigo-100/50 text-[10px] text-indigo-900 leading-normal flex items-start gap-2">
                          <CheckCircle2 size={12} className="text-indigo-600 shrink-0 mt-0.5" />
-                         <span>Delivery completed by the moto driver. The buyer will release the funds through their Wallet Escrow Panel shortly!</span>
+                         <span>Delivery completed by the moto driver. Order has been finalized and payment is being settled!</span>
                        </div>
                      )}
 
@@ -2574,7 +2576,7 @@ export default function SellerDashboard() {
                   <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><DollarSign size={16} className="fill-green-100" /></div>
                   <div>
                     <h4 className="font-bold text-xs text-gray-800">Secure Payments</h4>
-                    <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">Momo / eMali escrow protection active.</p>
+                    <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">Momo / eMali payment processing active.</p>
                   </div>
                 </div>
                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center gap-2 col-span-2">
@@ -2600,7 +2602,7 @@ export default function SellerDashboard() {
                     WhatsApp Gateway Setup
                  </h3>
                  <p className="text-[11px] text-teal-100 leading-relaxed font-normal">
-                    Link your trader mobile number to receive instant order dispatches, secure escrow confirmations, and one-click customer chats.
+                    Link your trader mobile number to receive instant order dispatches, secure payment confirmations, and one-click customer chats.
                  </p>
                </div>
              </div>

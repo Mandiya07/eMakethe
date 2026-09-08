@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, MapPin, Store, Leaf, Pizza, Shirt, Wrench, Scissors, Car, Palette, Hammer, Home as HomeIcon, Smartphone, MoreHorizontal, X, Sparkles, Download, Layers } from 'lucide-react';
+import { Bell, MapPin, Store, Leaf, Pizza, Shirt, Wrench, Scissors, Car, Palette, Hammer, Home as HomeIcon, Smartphone, MoreHorizontal, X, Sparkles, Download, Layers, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { useFirebase } from '../components/FirebaseProvider';
@@ -186,6 +186,12 @@ export default function Home() {
             </div>
           </div>
           <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar whitespace-nowrap flex-nowrap py-0.5">
+            <Link 
+              to="/orders"
+              className="flex items-center gap-1.5 bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-full text-[10px] shadow-sm transition-all active:scale-95 shrink-0 hover:bg-amber-300"
+            >
+              <Truck size={12} className="text-slate-950" /> Track Orders
+            </Link>
             <button 
               onClick={() => window.dispatchEvent(new CustomEvent('emakethe_open_portal_switcher'))}
               className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] font-bold text-white transition-all active:scale-95 shrink-0"
