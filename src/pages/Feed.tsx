@@ -463,7 +463,7 @@ export default function Feed() {
                       <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
                         {trProducts.map(p => (
                           <Link to={`/product/${p.id}`} key={`tr-prod-${p.id}`} className="min-w-[150px] bg-white p-2 rounded-lg border border-gray-100 shadow-3xs hover:scale-102 transition-transform shrink-0">
-                            <img src={p.images[0]} className="w-full h-24 object-cover rounded-md mb-1.5" />
+                            <img src={p.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} className="w-full h-24 object-cover rounded-md mb-1.5" />
                             <h5 className="text-[11px] font-black text-gray-800 line-clamp-1 leading-tight">{p.name}</h5>
                             <span className="text-[11px] font-bold text-green-600 font-mono">E {p.price}</span>
                           </Link>
@@ -565,7 +565,7 @@ export default function Feed() {
                     {/* Main Image Banner linked to detail screen */}
                     <Link to={`/product/${product.id}`} className="h-60 bg-gray-100 w-full relative block overflow-hidden group">
                       <img 
-                        src={product.images[0]} 
+                        src={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} 
                         alt={product.name} 
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                       />

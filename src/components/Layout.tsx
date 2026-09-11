@@ -6,9 +6,11 @@ import RoleSwitcher from './RoleSwitcher';
 import { useState, useEffect } from 'react';
 import { WifiOff, Home, Compass, MessageCircle, Wallet, Menu, Package } from 'lucide-react';
 
+import { OfflineIndicator } from './pwa/OfflineIndicator';
+import { PWAInstallButton } from './pwa/PWAInstallButton';
+
 export default function Layout() {
   const location = useLocation();
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [lowDataMode, setLowDataMode] = useState(() => {
     try {
       return localStorage.getItem('emakethe_low_data') === 'true';
@@ -35,12 +37,6 @@ export default function Layout() {
   });
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
     const checkState = () => {
       try {
         const current = localStorage.getItem('emakethe_low_data') === 'true';
@@ -63,8 +59,6 @@ export default function Layout() {
     updateBalance();
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('emakethe_low_data_changed', checkState);
       window.removeEventListener('storage', updateBalance);
       window.removeEventListener('emakethe_wallet_balance_changed', updateBalance);
@@ -117,11 +111,10 @@ export default function Layout() {
 
         {/* MAIN USER INTERFACE CONTAINER (Fits both perfectly) */}
         <main className="flex-1 w-full max-w-md md:max-w-2xl lg:max-w-3xl bg-white md:rounded-[2rem] md:border md:border-gray-200/80 md:shadow-md min-h-screen md:min-h-[calc(100vh-3rem)] relative flex flex-col overflow-hidden">
-          {isOffline && (
-            <div className="bg-orange-500 text-white text-xs font-bold text-center py-2 flex items-center justify-center gap-2">
-              <WifiOff size={14} /> You are currently offline. Working from local cache.
-            </div>
-          )}
+          <OfflineIndicator />
+          <div className="md:hidden flex justify-center py-2 bg-emerald-50 empty:hidden">
+            <PWAInstallButton />
+          </div>
           <div className="flex-1 overflow-y-auto pb-20 md:pb-6 no-scrollbar relative w-full h-full">
             <Outlet />
           </div>
@@ -182,6 +175,9 @@ export default function Layout() {
                   <span>🚀 Open Swazi Stall</span>
                   <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md text-emerald-50">Free</span>
                 </Link>
+              </div>
+              <div className="mt-3">
+                <PWAInstallButton />
               </div>
             </div>
           </div>

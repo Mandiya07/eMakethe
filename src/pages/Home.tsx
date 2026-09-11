@@ -335,7 +335,7 @@ export default function Home() {
                     <h3 className="font-black text-sm sm:text-base line-clamp-1 mt-1">{product.name}</h3>
                     <p className="text-[11px] font-medium text-white/90 mt-1">Free Delivery nearby</p>
                  </div>
-                 <img src={product.images?.[0] || ""} className="w-16 h-16 rounded-xl object-cover border-2 border-white/20 shadow-sm ml-2 shrink-0" />
+                  <img src={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} className="w-16 h-16 rounded-xl object-cover border-2 border-white/20 shadow-sm ml-2 shrink-0" />
               </Link>
             ))}
           </div>
@@ -518,7 +518,7 @@ export default function Home() {
                  {/* Main Product Image (Large & Prominent) */}
                  <Link to={`/product/${product.id}`} className="h-64 bg-gray-100 w-full relative block overflow-hidden border-y border-gray-100">
                    <img 
-                     src={product.images[0]} 
+                     src={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} 
                      alt={product.name} 
                      className="w-full h-full object-cover hover:scale-103 transition-transform duration-500" 
                      loading="lazy"

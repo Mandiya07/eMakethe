@@ -1425,7 +1425,7 @@ export default function Wallet() {
                                onClick={() => setScannedMerchant({ name: 'Eswatini Harvest Coop', till: 'MOMO-99120', amount: 85.00, provider: 'MTN MoMo' })}
                                className="bg-slate-100 hover:bg-slate-200 border border-gray-200 p-2.5 rounded-xl text-left text-[10px] font-bold text-gray-700 flex flex-col gap-0.5 transition-all"
                              >
-                               <span className="text-[8px] text-amber-600 uppercase font-black font-mono font-bold">Mock Scan A</span>
+                               <span className="text-[8px] text-amber-600 uppercase font-black font-mono font-bold">Sample Scan A</span>
                                <span>🌾 Harvest Coop QR</span>
                              </button>
 
@@ -1434,7 +1434,7 @@ export default function Wallet() {
                                onClick={() => setScannedMerchant({ name: 'Mbabane Fresh Market', till: 'EMALI-44201', amount: 140.00, provider: 'Eswatini Mobile eMali' })}
                                className="bg-slate-100 hover:bg-slate-200 border border-gray-200 p-2.5 rounded-xl text-left text-[10px] font-bold text-gray-700 flex flex-col gap-0.5 transition-all"
                              >
-                               <span className="text-[8px] text-blue-600 uppercase font-black font-mono font-bold">Mock Scan B</span>
+                               <span className="text-[8px] text-blue-600 uppercase font-black font-mono font-bold">Sample Scan B</span>
                                <span>🍅 Fresh Market QR</span>
                              </button>
                            </div>

@@ -464,7 +464,7 @@ export default function Shop() {
             {sellerProducts.map(product => (
               <Link to={`/product/${product.id}`} key={product.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 flex flex-col w-full">
                 <div className="h-32 bg-gray-100 relative">
-                   <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                   <img src={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} alt={product.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-3">
                   <h3 className="font-semibold text-gray-800 text-sm line-clamp-1">{product.name}</h3>

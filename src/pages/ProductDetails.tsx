@@ -1052,7 +1052,7 @@ export default function ProductDetails() {
                 
                 {/* Background Unsplash Harvest Image with visual effect to mimic shaky handcam */}
                 <img 
-                  src={product.images[0]} 
+                  src={product.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} 
                   className={`w-full h-full object-cover transition-transform duration-500 ${isVideoPlaying ? 'scale-105 animate-pulse' : 'scale-100 opacity-80'}`} 
                   alt="Video frame" 
                 />

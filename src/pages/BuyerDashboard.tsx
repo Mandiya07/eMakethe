@@ -150,7 +150,7 @@ export default function BuyerDashboard() {
             {activeOrder && (
               <OrderStatusTracker 
                 order={activeOrder}
-                showAdminSimulationControls={true}
+                showAdminSimulationControls={false}
               />
             )}
           </>

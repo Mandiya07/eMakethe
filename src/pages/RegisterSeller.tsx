@@ -140,16 +140,16 @@ export default function RegisterSeller() {
       </div>
 
       <div className="px-4 -mt-6 relative z-10 flex-1 max-w-md mx-auto w-full">
-        {/* Quick Trade Templates */}
+        {/* Stall Category Templates */}
         <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-4">
           <div className="flex items-center gap-1.5 mb-2 px-0.5">
             <Sparkles size={14} className="text-emerald-600" />
             <span className="text-[11px] font-black text-gray-800 uppercase tracking-wider">
-              Quick Setup Presets
+              Stall Category Templates
             </span>
           </div>
           <p className="text-[10px] text-gray-500 mb-3 leading-relaxed">
-            Tap a preset to fill category details instantly:
+            Choose a template below to auto-complete category and description details instantly:
           </p>
 
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">

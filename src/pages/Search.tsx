@@ -155,7 +155,7 @@ export default function Search() {
                 className={`p-3 rounded-2xl shadow-sm border flex gap-3 transition-all relative overflow-hidden ${isFeatured ? 'bg-white border-pink-200/80 shadow-xs ring-1 ring-pink-100/30' : 'bg-white border-gray-100'}`}
               >
                 <div className="relative shrink-0">
-                  <img src={product.images[0]} className="w-24 h-24 rounded-xl object-cover" />
+                  <img src={product.images?.[0] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200'} className="w-24 h-24 rounded-xl object-cover" />
                   {isFeatured && (
                     <span className="absolute top-1 left-1 bg-pink-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider font-mono">
                        🔥 Promoted

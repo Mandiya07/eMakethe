@@ -1368,7 +1368,7 @@ export default function SellerDashboard() {
                   {products.slice(0, 3).map((p, idx) => (
                     <div key={p.id} className="flex items-center gap-3">
                        <span className="font-bold text-gray-400 text-xs w-2">{idx + 1}</span>
-                       <img src={p.images[0]} className="w-10 h-10 rounded-lg object-cover" />
+                       <img src={p.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} className="w-10 h-10 rounded-lg object-cover" />
                        <div className="flex-1">
                           <h4 className="font-bold text-xs text-gray-800">{p.name}</h4>
                           <p className="text-[10px] text-gray-500">{124 - idx * 20} views • E {p.price * (14 - idx)} revenue</p>
@@ -1674,7 +1674,7 @@ export default function SellerDashboard() {
             <div className="flex flex-col gap-3 w-full">
               {products.map(p => (
                 <div key={p.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
-                  <img src={p.images[0]} className="w-16 h-16 rounded-lg object-cover" />
+                  <img src={p.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} className="w-16 h-16 rounded-lg object-cover" />
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-800 text-sm">{p.name}</h4>
                     <p className="text-green-600 font-bold text-xs mt-0.5">{p.currency}{p.price} {p.unit}</p>
@@ -2077,7 +2077,7 @@ export default function SellerDashboard() {
                              return (
                                 <div key={`act-feat-${prodId}`} className="border border-pink-100 bg-pink-50/10 p-3 rounded-2xl flex items-center justify-between gap-2.5 animate-in slide-in-from-bottom-2">
                                    <div className="flex items-center gap-2">
-                                      <img src={originalProd?.images[0]} className="w-8 h-8 rounded-lg object-cover" />
+                                      <img src={originalProd?.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} className="w-8 h-8 rounded-lg object-cover" />
                                       <div>
                                          <h5 className="text-xs font-bold text-gray-800 line-clamp-1">{originalProd?.name || 'My Product'}</h5>
                                          <div className="flex items-center gap-1.5 mt-0.5">
@@ -2216,7 +2216,7 @@ export default function SellerDashboard() {
                              return (
                                 <div key={`act-spon-${prodId}`} className="border border-orange-100 bg-orange-50/10 p-3 rounded-2xl flex items-center justify-between gap-2.5 animate-in slide-in-from-bottom-2">
                                    <div className="flex items-center gap-2">
-                                      <img src={originalProd?.images[0]} className="w-8 h-8 rounded-lg object-cover" />
+                                      <img src={originalProd?.images?.[0] || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=200"} className="w-8 h-8 rounded-lg object-cover" />
                                       <div>
                                          <h5 className="text-xs font-bold text-gray-800 line-clamp-1">{originalProd?.name || 'My Product'}</h5>
                                          <p className="text-[9px] text-gray-450 font-bold font-mono">Placed: {sponsoredPlacement} • E 25.00/wk</p>
